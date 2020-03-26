@@ -1,8 +1,8 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 # GANs for tabular data
-GANs are well known for the realistic image generation. However, they can be used in tabular data generation as well. Here I would like to review one of recent state of the art paper in tabular generation.
+We well know GANs for success in the realistic image generation. However, they can be applied in tabular data generation. We will review and examine some recent papers about tabular GANs in action.
 
-Medium post: [GANs for tabular data](TODO paste link)
+Medium post: [GANs for tabular data](https://towardsdatascience.com/review-of-gans-for-tabular-data-a30a2199342)
 ## Used datasets and expriment design
 
 **Task formalization**
@@ -81,11 +81,19 @@ To determine the best validation strategy, I compared the top score of each data
 
 ## References
 
-1. Generative Adversarial Networks. arXiv:1406.2661 by Ian J. Goodfellow, etc
-2. Synthesizing Tabular Data using Generative Adversarial Networks. arXiv:1811.11264v1 [cs.LG] by Lei Xu LIDS, Kalyan Veeramachaneni
-3. Modeling Tabular Data using Conditional GAN arXiv:1907.00503v2 [cs.LG] by Lei Xu, Maria Skoularidou, etc
-4. [Benchmarking Categorical Encoders](https://towardsdatascience.com/benchmarking-categorical-encoders-9c322bd77ee8) by Denis Vorotyntsev
-5. Source code based on [CategoricalEncodingBenchmark](https://github.com/DenisVorotyntsev/CategoricalEncodingBenchmark)
-6. Source code [CTGAN](https://github.com/sdv-dev/CTGAN)  
+[1] Jonathan Hui. GAN — What is Generative Adversarial Networks GAN? (2018), medium article
+
+[2]Ian J. Goodfellow, Jean Pouget-Abadie, Mehdi Mirza, Bing Xu, David Warde-Farley, Sherjil Ozair, Aaron Courville, Yoshua Bengio. Generative Adversarial Networks (2014). arXiv:1406.2661
+
+[3] Lei Xu LIDS, Kalyan Veeramachaneni. Synthesizing Tabular Data using Generative Adversarial Networks (2018). arXiv:1811.11264v1 [cs.LG]
+
+[4] Lei Xu, Maria Skoularidou, Alfredo Cuesta-Infante, Kalyan Veeramachaneni. Modeling Tabular Data using Conditional GAN (2019). arXiv:1907.00503v2 [cs.LG]
+
+[5] Denis Vorotyntsev. Benchmarking Categorical Encoders (2019). Medium post
+
+[6] Insaf Ashrapov. GAN-for-tabular-data (2020). Github repository.
+
+[7] Tero Karras, Samuli Laine, Miika Aittala, Janne Hellsten, Jaakko Lehtinen, Timo Aila. Analyzing and Improving the Image Quality of StyleGAN (2019) arXiv:1912.04958v2 [cs.CV]
+
 
 

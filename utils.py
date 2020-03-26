@@ -79,6 +79,13 @@ def cat_cols_info(
 
 
 def adversarial_test(left_df, right_df, cat_cols):
+    """
+    Trains adversarial model to distinguish train from test
+    :param left_df:  dataframe
+    :param right_df: dataframe
+    :param cat_cols: List of categorical columns
+    :return: trained model
+    """
     # sample to shuffle the data
     left_df = left_df.copy().sample(frac=1).reset_index(drop=True)
     right_df = right_df.copy().sample(frac=1).reset_index(drop=True)
@@ -116,6 +123,18 @@ def adversarial_test(left_df, right_df, cat_cols):
 
 
 def extend_gan_train(x_train, y_train, x_test, cat_cols, gen_x_times=1.2, epochs=300):
+    """
+    Extends train by generating new data by GAN
+    :param x_train:  train dataframe
+    :param y_train: target for train dataframe
+    :param x_test: dataframe
+    :param cat_cols: List of categorical columns
+    :param gen_x_times: Factor for which initial dataframe should be increased
+    :param cat_cols: List of categorical columns
+    :param epochs: Number of epoch max to train the GAN
+    :return: extended train with target
+    """
+
     if gen_x_times == 0:
         raise ValueError("Passed gen_x_times with value 0!")
     x_train["target"] = y_train
@@ -165,6 +184,16 @@ def extend_gan_train(x_train, y_train, x_test, cat_cols, gen_x_times=1.2, epochs
 
 
 def extend_from_original(x_train, y_train, x_test, cat_cols, gen_x_times=1.2):
+    """
+    Extends train by generating new data by GAN
+    :param x_train:  train dataframe
+    :param y_train: target for train dataframe
+    :param x_test: dataframe
+    :param cat_cols: List of categorical columns
+    :param gen_x_times: Factor for which initial dataframe should be increased
+    :param cat_cols: List of categorical columns
+    :return: extended train with target
+    """
     if gen_x_times == 0:
         raise ValueError("Passed gen_x_times with value 0!")
     x_train["target"] = y_train
