@@ -1,3 +1,5 @@
+REFERENCE (initial code): https://github.com/sdv-dev/CTGAN
+
 <p align="left">
 <img width=15% src="https://dai.lids.mit.edu/wp-content/uploads/2018/06/Logo_DAI_highres.png" alt=“sdv-dev” />
 <i>An open source project from Data to AI Lab at MIT.</i>
