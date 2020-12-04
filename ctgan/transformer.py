@@ -44,7 +44,8 @@ class DataTransformer(object):
             'output_dimensions': 1 + num_components,
         }
 
-    def _fit_discrete(self, column, data):
+    @staticmethod
+    def _fit_discrete(column, data):
         ohe = OneHotEncoder(sparse=False)
         ohe.fit(data)
         categories = len(ohe.categories_[0])
@@ -106,7 +107,8 @@ class DataTransformer(object):
         probs_onehot[np.arange(len(probs)), opt_sel] = 1
         return [features, probs_onehot]
 
-    def _transform_discrete(self, column_meta, data):
+    @staticmethod
+    def _transform_discrete(column_meta, data):
         encoder = column_meta['encoder']
         return encoder.transform(data)
 
@@ -147,7 +149,8 @@ class DataTransformer(object):
 
         return column
 
-    def _inverse_transform_discrete(self, meta, data):
+    @staticmethod
+    def _inverse_transform_discrete(meta, data):
         encoder = meta['encoder']
         return encoder.inverse_transform(data)
 
