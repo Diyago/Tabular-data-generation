@@ -67,7 +67,6 @@ class Model:
                 )
                 X_train = encoder.fit_transform(X_train, y_train)
                 X_val = encoder.transform(X_val)
-                pass
             self.encoders_list.append(encoder)
 
             # check for OrdinalEncoder encoding
