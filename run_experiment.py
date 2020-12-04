@@ -93,7 +93,7 @@ def execute_experiment(dataset_name, encoders_list, validation_type, sample_type
                 "avg_tress_number": avg_num_trees,
                 "train_prop_size": train_prop_size,
             }
-            save_exp_to_file(dic=results, path=f"./results/fit_predict_scores.txt")
+            save_exp_to_file(dic=results, path="./results/fit_predict_scores.txt")
 
 
 if __name__ == "__main__":
