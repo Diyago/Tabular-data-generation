@@ -115,5 +115,4 @@ class Model:
             y_hat += rankdata(unranked_preds)
         if return_shape:
             return y_hat, X_test.shape[1]
-        else:
-            return y_hat
+        return y_hat
