@@ -56,7 +56,7 @@ class DataTransformer(object):
             'output_dimensions': categories
         }
 
-    def fit(self, data, discrete_columns=tuple()):
+    def fit(self, data, discrete_columns=()):
         self.output_info = []
         self.output_dimensions = 0
 
