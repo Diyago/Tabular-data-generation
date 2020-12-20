@@ -7,7 +7,7 @@ We well know GANs for success in the realistic image generation. However, they c
 
 * Arxiv article: ["Tabular GANs for uneven distribution"](https://arxiv.org/abs/2010.00638)
 * Medium post: [GANs for tabular data](https://towardsdatascience.com/review-of-gans-for-tabular-data-a30a2199342)
-## Used datasets and expriment design
+## Datasets and expriment design
 
 **Running experiment**
 To run experiment follow these steps:
@@ -54,7 +54,7 @@ Remaining columns were either categorical or numerical.
 
 ## Results
 
-To determine the best encoderthe ROC AUC scores of each dataset were scaled (min-max scale) and then averaged results among the dataset. 
+To determine the best method ROC AUC scores of each dataset were scaled (min-max scale) and then averaged results among the dataset. 
 To determine the best validation strategy, I compared the top score of each dataset for each type of validation. 
 
 **Table 1.2** Different sampling results across the dataset, higher is better (100% - maximum per dataset ROC AUC)
