@@ -88,7 +88,7 @@ To determine the best validation strategy, I compared the top score of each data
 | sample_original |                  1 |          0.984 |
 
 
-##Acknowledgments
+## Acknowledgments
 
 The author would like to thank Open Data Science community [8] for many
 valuable discussions and educational help in the growing field of machine and
