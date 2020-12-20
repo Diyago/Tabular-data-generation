@@ -91,7 +91,7 @@ To determine the best validation strategy, I compared the top score of each data
 
 ## Acknowledgments
 
-The author would like to thank Open Data Science community [8] for many
+The author would like to thank Open Data Science community [7] for many
 valuable discussions and educational help in the growing field of machine and
 deep learning. Also, special big thanks to Sber [8] for allowing solving
 such tasks and providing computational resources.
