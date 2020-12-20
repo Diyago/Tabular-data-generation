@@ -54,8 +54,7 @@ Remaining columns were either categorical or numerical.
 
 ## Results
 
-To determine the best method ROC AUC scores of each dataset were scaled (min-max scale) and then averaged results among the dataset. 
-To determine the best validation strategy, I compared the top score of each dataset for each type of validation. 
+To determine the best sampling strategy, ROC AUC scores of each dataset were scaled (min-max scale) and then averaged among the dataset. 
 
 **Table 1.2** Different sampling results across the dataset, higher is better (100% - maximum per dataset ROC AUC)
 
