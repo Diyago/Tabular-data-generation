@@ -4,8 +4,16 @@
 # GANs for tabular data
 We well know GANs for success in the realistic image generation. However, they can be applied in tabular data generation. We will review and examine some recent papers about tabular GANs in action.
 
-Medium post: [GANs for tabular data](https://towardsdatascience.com/review-of-gans-for-tabular-data-a30a2199342)
+* Arxiv article: ["Tabular GANs for uneven distribution"](https://arxiv.org/abs/2010.00638)
+* Medium post: [GANs for tabular data](https://towardsdatascience.com/review-of-gans-for-tabular-data-a30a2199342)
 ## Used datasets and expriment design
+
+**Running experiment**
+To run experiment follow these steps:
+1. Clone the repository. All required dataset are stored in `./data` folder
+2. Install requirements `pip install -r requirements.txt`
+4. Run all experiments  `python run_experiment.py`. Run all experiments  `python run_experiment.py`. You may add more datasets, adjust validation type and categorical encoders. 
+5. Observe metrics across all experiment in console or in `./results/fit_predict_scores.txt`
 
 **Task formalization**
 
@@ -80,6 +88,11 @@ To determine the best validation strategy, I compared the top score of each data
 | sample_original |                  1 |          0.984 |
 
 
+##Acknowledgments
+The author would like to thank Open Data Science community [8] for many
+valuable discussions and educational help in the growing field of machine and
+deep learning. Also, special big thanks to Sber [8] for allowing solving
+such tasks and providing computational resources.
 
 ## References
 
@@ -97,5 +110,8 @@ To determine the best validation strategy, I compared the top score of each data
 
 [7] Tero Karras, Samuli Laine, Miika Aittala, Janne Hellsten, Jaakko Lehtinen, Timo Aila. Analyzing and Improving the Image Quality of StyleGAN (2019) arXiv:1912.04958v2 [cs.CV]
 
+[8]  ODS.ai: Open data science (2020), https://ods.ai/
+
+[9]  Sber (2020), https://www.sberbank.ru/
 
 
