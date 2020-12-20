@@ -188,10 +188,9 @@ def extend_from_original(x_train, y_train, x_test, cat_cols, gen_x_times=1.2):
     Extends train by generating new data by GAN
     :param x_train:  train dataframe
     :param y_train: target for train dataframe
-    :param x_test: dataframe
+    :param x_test: test dataframe
     :param cat_cols: List of categorical columns
     :param gen_x_times: Factor for which initial dataframe should be increased
-    :param cat_cols: List of categorical columns
     :return: extended train with target
     """
     if gen_x_times == 0:
