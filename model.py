@@ -10,13 +10,23 @@ from encoders import MultipleEncoder, DoubleValidationEncoderNumerical
 
 class Model:
     def __init__(
-        self,
-        cat_validation="None",
-        encoders_names=None,
-        cat_cols=None,
-        model_validation=StratifiedKFold(n_splits=5, shuffle=True, random_state=42),
-        model_params=None,
+            self,
+            cat_validation="None",
+            encoders_names=None,
+            cat_cols=None,
+            model_validation=StratifiedKFold(n_splits=5, shuffle=True, random_state=42),
+            model_params=None,
     ):
+        '''
+        Class for fit predicting tabular models, mostly - boostings. Several encoders for categorical features are supported
+
+        Args:
+            cat_validation: categorical type of validation, examples: "None", "Single" and "Double"
+            encoders_names: different categorical encoders from category_encoders library, example CatBoostEncoder
+            cat_cols: list of categorical columns
+            model_validation: model training cross validation type from sklearn.model_selection, example StratifiedKFold(5)
+            model_params: model training hyperparameters
+        '''
         self.cat_validation = cat_validation
         self.encoders_names = encoders_names
         self.cat_cols = cat_cols
@@ -39,6 +49,15 @@ class Model:
         self.models_trees = []
 
     def fit(self, X: pd.DataFrame, y: np.array) -> tuple:
+        """
+        Fits model with speficified in init params
+        Args:
+            X: Input training dataframe
+            y: Target for X
+
+        Returns:
+            mean_score_train, mean_score_val, avg_num_trees
+        """
         # process cat cols
         if self.cat_validation == "None":
             encoder = MultipleEncoder(
@@ -47,7 +66,7 @@ class Model:
             X = encoder.fit_transform(X, y)
 
         for n_fold, (train_idx, val_idx) in enumerate(
-            self.model_validation.split(X, y)
+                self.model_validation.split(X, y)
         ):
             X_train, X_val = (
                 X.iloc[train_idx].reset_index(drop=True),
@@ -75,7 +94,6 @@ class Model:
                 X_val[col] = X_val[col].astype("category")
 
             # fit model
-
             model = LGBMClassifier(**self.model_params)
             model.fit(
                 X_train,
@@ -102,6 +120,15 @@ class Model:
         return mean_score_train, mean_score_val, avg_num_trees
 
     def predict(self, X: pd.DataFrame, return_shape=True) -> np.array:
+        """
+        Making inference with trained models for input dataframe
+        Args:
+            X: input dataframe for inference
+            return_shape: boolean return shape if True
+
+        Returns: Predicted ranks and number of input features if return_shape is True
+
+        """
         y_hat = np.zeros(X.shape[0])
         for encoder, model in zip(self.encoders_list, self.models_list):
             X_test = X.copy()

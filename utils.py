@@ -3,9 +3,9 @@ from typing import List
 
 import numpy as np
 import pandas as pd
-from ctgan import CTGANSynthesizer
 from sklearn.model_selection import StratifiedKFold
 
+from ctgan import CTGANSynthesizer
 from model import Model
 
 

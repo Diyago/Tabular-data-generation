@@ -11,6 +11,17 @@ from utils import save_exp_to_file, extend_gan_train, extend_from_original
 
 
 def execute_experiment(dataset_name, encoders_list, validation_type, sample_type=None):
+    """
+    Executes experiment with specified dataset name, sample strategy and validation type. Metrics and results will written in log file
+    Args:
+        dataset_name: dataset name, which will read from data folder as csv file
+        encoders_list: encoders_list which will be used for training
+        validation_type: categorical type of validation, examples: "None", "Single" and "Double"
+        sample_type: sample type by generating from gan or by sampling from train
+
+    Returns: None
+
+    """
     dataset_pth = f"./data/{dataset_name}/{dataset_name}.gz"
     results = {}
 
@@ -98,6 +109,7 @@ def execute_experiment(dataset_name, encoders_list, validation_type, sample_type
 
 if __name__ == "__main__":
 
+    # Other type of enccoders might be used as well
     encoders_list = [("CatBoostEncoder",)]
 
     dataset_list = [
