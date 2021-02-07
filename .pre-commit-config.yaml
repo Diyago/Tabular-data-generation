@@ -5,6 +5,7 @@ repos:
     -   id: check-yaml
     -   id: end-of-file-fixer
     -   id: trailing-whitespace
+    exlude: Research/*
 -   repo: https://github.com/psf/black
     rev: 19.3b0
     hooks:
