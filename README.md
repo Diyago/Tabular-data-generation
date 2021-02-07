@@ -2,12 +2,12 @@
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 # GANs for tabular  data
-![Tabular GAN logo](./images/tabular_gan.png =278x126)
+<img src="./images/tabular_gan.png" height="15%" width="15%">
 We well know GANs for success in the realistic image generation. However, they can be applied in tabular data generation. We will review and examine some recent papers about tabular GANs in action.
 
 * Arxiv article: ["Tabular GANs for uneven distribution"](https://arxiv.org/abs/2010.00638)
 * Medium post: [GANs for tabular data](https://towardsdatascience.com/review-of-gans-for-tabular-data-a30a2199342)
-## Used datasets and expriment design
+## Datasets and expriment design
 
 **Running experiment**
 To run experiment follow these steps:
@@ -54,8 +54,7 @@ Remaining columns were either categorical or numerical.
 
 ## Results
 
-To determine the best encoderthe ROC AUC scores of each dataset were scaled (min-max scale) and then averaged results among the dataset. 
-To determine the best validation strategy, I compared the top score of each dataset for each type of validation. 
+To determine the best sampling strategy, ROC AUC scores of each dataset were scaled (min-max scale) and then averaged among the dataset. 
 
 **Table 1.2** Different sampling results across the dataset, higher is better (100% - maximum per dataset ROC AUC)
 
@@ -91,7 +90,7 @@ To determine the best validation strategy, I compared the top score of each data
 
 ## Acknowledgments
 
-The author would like to thank Open Data Science community [8] for many
+The author would like to thank Open Data Science community [7] for many
 valuable discussions and educational help in the growing field of machine and
 deep learning. Also, special big thanks to Sber [8] for allowing solving
 such tasks and providing computational resources.
