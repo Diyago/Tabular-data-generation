@@ -13,7 +13,7 @@ We well know GANs for success in the realistic image generation. However, they c
 To run experiment follow these steps:
 1. Clone the repository. All required dataset are stored in `./data` folder
 2. Install requirements `pip install -r requirements.txt`
-4. Run all experiments  `python run_experiment.py`. Run all experiments  `python run_experiment.py`. You may add more datasets, adjust validation type and categorical encoders. 
+4. Run all experiments  `python run_experiment.py`. Run all experiments  `python run_experiment.py`. You may add more datasets, adjust validation type and categorical encoders.
 5. Observe metrics across all experiment in console or in `./results/fit_predict_scores.txt`
 
 **Task formalization**
@@ -25,22 +25,22 @@ Let say we have **T_train** and **T_test** (train and test set respectively). We
 Let say we have **T_train** and **T_test** (train and test set respectively). The size of **T_train** is smaller and might have different data distribution. First of all, we train CTGAN on **T_train** with ground truth labels (step 1), then generate additional data **T_synth** (step 2). Secondly, we train boosting in an adversarial way on concatenated **T_train** and **T_synth** (target set to 0) with **T_test** (target set to 1) (steps 3 & 4). The goal is to apply newly trained adversarial boosting to obtain rows more like **T_test**. Note - initial ground truth labels aren't used for adversarial training. As a result, we take top rows from **T_train** and **T_synth** sorted by correspondence to **T_test** (steps 5 & 6), and train new boosting on them and check results on **T_test**.
 
 ![Experiment design and workflow](./images/workflow.png?raw=true)
- 
+
 **Picture 1.1** Experiment design and workflow
 
 Of course for the benchmark purposes we will test ordinal training without these tricks and another original pipeline but without CTGAN (in step 3 we won't use **T_sync**).
 
 **Datasets**
 
-All datasets came from different domains. They have a different number of observations, number of categorical and numerical features. 
-The objective for all datasets - binary classification. 
-Preprocessing of datasets were simple: removed all time-based columns from datasets. 
-Remaining columns were either categorical or numerical. 
+All datasets came from different domains. They have a different number of observations, number of categorical and numerical features.
+The objective for all datasets - binary classification.
+Preprocessing of datasets were simple: removed all time-based columns from datasets.
+Remaining columns were either categorical or numerical.
 
 
-**Table 1.1** Used datasets 
+**Table 1.1** Used datasets
 
-| Name | Total points | Train points | Test points | Number of features | Number of categorical features | Short description | 
+| Name | Total points | Train points | Test points | Number of features | Number of categorical features | Short description |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | [Telecom](https://www.kaggle.com/blastchar/telco-customer-churn)   | 7.0k | 4.2k |  2.8k |  20   |  16  | Churn prediction for telecom data |
 | [Adult](https://www.kaggle.com/wenruliu/adult-income-dataset)   | 48.8k | 29.3k | 19.5k  |  15  | 8 | Predict if persons' income is bigger 50k |
@@ -54,7 +54,7 @@ Remaining columns were either categorical or numerical.
 
 ## Results
 
-To determine the best sampling strategy, ROC AUC scores of each dataset were scaled (min-max scale) and then averaged among the dataset. 
+To determine the best sampling strategy, ROC AUC scores of each dataset were scaled (min-max scale) and then averaged among the dataset.
 
 **Table 1.2** Different sampling results across the dataset, higher is better (100% - maximum per dataset ROC AUC)
 
@@ -114,5 +114,3 @@ such tasks and providing computational resources.
 [8]  ODS.ai: Open data science (2020), https://ods.ai/
 
 [9]  Sber (2020), https://www.sberbank.ru/
-
-
