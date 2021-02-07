@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import sys
+import gc
 
 __author__ = "Insaf Ashrapov"
 __copyright__ = "Insaf Ashrapov"
@@ -27,12 +28,9 @@ class SampleData(ABC):
         todo write desc
     """
 
-    def __init__(self, **kwargs):
-        args = kwargs
-
     @abstractmethod
     def get_object_generator(self):
-        pass
+        raise NotImplementedError
 
     def generate_data(self, train_df, test_df) -> pd.DataFrame:
         generator = self.get_object_generator()
@@ -48,7 +46,7 @@ class SamplerOriginalGenerator(SampleData):
         return SamplerOriginal()
 
 
-class Sampler1GANGenerator(SampleData):
+class SamplerGANGenerator(SampleData):
     def get_object_generator(self) -> Sampler:
         return SamplerGAN()
 
@@ -63,20 +61,41 @@ class Sampler(ABC):
         Interface
     """
 
+    def get_generated_shape(self, input_df):
+        """
+        Calcs finall output shape
+        """
+        if self.gen_x_times <= 0:
+            raise ValueError("Passed gen_x_times = {} should be bigger than 0".format(self.gen_x_times))
+        return int(self.gen_x_times * input_df.shape[0] / input_df.shape[0])
+
     @abstractmethod
     def preprocess_data(self, train_df, test_df, ):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def generate_data(self, train_df, test_df):
-        pass
+        raise NotImplementedError
 
 
 class SamplerOriginal(Sampler):
+    def __init__(self, gen_x_times, **kwargs):
+        """
+        :param gen_x_times: Factor for which initial dataframe should be increased
+        """
+        self.args = kwargs
+        self.gen_x_times = gen_x_times
+
     def preprocess_data(self, train_df, test_df, ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         return train_df, test_df
 
     def generate_data(self, train_df, test_df) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        x_test_bigger = self.get_generated_shape(train_df)
+        generated_df = train_df.sample(frac=x_test_bigger, replace=True, random_state=42)
+        generated_df = generated_df.reset_index(drop=True)
+        train_df = pd.concat([train_df, generated_df], axis=0).reset_index(drop=True)
+        del generated_df
+        gc.collect()
         return train_df
 
 
@@ -89,17 +108,32 @@ class SamplerGAN(Sampler):
 
 
 class SamplerAdversarial(Sampler):
+    def __init__(self, gen_x_times, **kwargs):
+        """
+        :param gen_x_times: Factor for which initial dataframe should be increased
+        """
+        self.args = kwargs
+        self.gen_x_times = gen_x_times
+
     def preprocess_data(self, train_df, test_df, ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         return train_df, test_df
 
-    def generate_data(self, train_df, test_df):
+    def generate_data(self, train_df, test_df) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        x_test_bigger = self.get_generated_shape(train_df)
+        generated_df = train_df.sample(frac=x_test_bigger, replace=True, random_state=42)
+        generated_df = generated_df.reset_index(drop=True)
+        train_df = pd.concat([train_df, generated_df], axis=0).reset_index(drop=True)
+
+        #todo adversarial training
+        del generated_df
+        gc.collect()
         return train_df
 
 
 def client_code(creator: SampleData, in_train, in_test) -> None:
-    print(f"Generated data.\n"
-          f"{creator.generate_data(in_train, in_test)}", end="")
-    print("\n")
+    _logger.info(f"Generated data.")
+    _logger.info(creator.generate_data(in_train, in_test))
+    _logger.info("\n")
 
 
 def setup_logging(loglevel):
@@ -118,11 +152,11 @@ if __name__ == "__main__":
     setup_logging(logging.DEBUG)
     train, test = pd.DataFrame([[1, 2], [3, 4]]), pd.DataFrame([[1, 2], [7, 10]])
     _logger.debug("App: Launched SamplerOriginal")
-    client_code(SamplerOriginal(), train, test)
+    client_code(SamplerOriginal(gen_x_times=15), train, test)
 
+    # _logger.debug("App: Launched SamplerGAN")
+    # client_code(SamplerGAN(gen_x_times=1.5), train, test)
+    #
     _logger.debug("App: Launched SamplerGAN")
-    client_code(SamplerGAN(), train, test)
-
-    _logger.debug("App: Launched SamplerGAN")
-    client_code(SamplerAdversarial(), train, test)
+    client_code(SamplerAdversarial(gen_x_times=0.6), train, test)
     _logger.info("Script ends here")

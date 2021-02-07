@@ -196,7 +196,7 @@ def extend_from_original(x_train, y_train, x_test, cat_cols, gen_x_times=1.2):
     if gen_x_times == 0:
         raise ValueError("Passed gen_x_times with value 0!")
     x_train["target"] = y_train
-    x_test_bigger = int(1.1 * x_test.shape[0] / x_train.shape[0])
+    x_test_bigger = int(gen_x_times * x_test.shape[0] / x_train.shape[0])
     generated_df = x_train.sample(frac=x_test_bigger, replace=True, random_state=42)
     num_cols = []
     for col in x_train.columns:
