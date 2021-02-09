@@ -7,9 +7,9 @@ Based on factory method from https://refactoring.guru/ru/design-patterns/factory
 
 from __future__ import annotations
 
+import gc
 import logging
 import sys
-import gc
 
 __author__ = "Insaf Ashrapov"
 __copyright__ = "Insaf Ashrapov"
@@ -25,20 +25,28 @@ import pandas as pd
 
 class SampleData(ABC):
     """
-        todo write desc
+        Factory method for different sampler strategies. The goal is to generate more train data
+        which should be more close to test, in other word we trying to fix uneven distribution.
     """
 
     @abstractmethod
     def get_object_generator(self):
+        """
+        Getter for object sampler aka generator, which is not a generator
+        """
         raise NotImplementedError
 
-    def generate_data(self, train_df, test_df) -> pd.DataFrame:
+    def generate_data(self, train_df, target, test_df) -> pd.DataFrame:
+        """
+        Defines logic for sampling
+        """
         generator = self.get_object_generator()
 
         train_df, test_df = generator.preprocess_data(train_df, test_df)
         new_train = generator(train_df, test_df)
-
-        return new_train
+        new_train = generator.postprocess_data(new_train)
+        new_train, new_target = generator.adversarial_filtering(new_train, target, test_df)
+        return new_train, new_target
 
 
 class SamplerOriginalGenerator(SampleData):
@@ -51,19 +59,14 @@ class SamplerGANGenerator(SampleData):
         return SamplerGAN()
 
 
-class SamplerAdversarialGenerator(SampleData):
-    def get_object_generator(self) -> Sampler:
-        return SamplerAdversarial()
-
-
 class Sampler(ABC):
     """
-        Interface
+        Interface for each sampling strategy
     """
 
     def get_generated_shape(self, input_df):
         """
-        Calcs finall output shape
+        Calcs final output shape
         """
         if self.gen_x_times <= 0:
             raise ValueError("Passed gen_x_times = {} should be bigger than 0".format(self.gen_x_times))
@@ -71,20 +74,34 @@ class Sampler(ABC):
 
     @abstractmethod
     def preprocess_data(self, train_df, test_df, ):
+        """Before we can start data generation we might need some preprosing, numpy to pandas
+        and etc"""
         raise NotImplementedError
 
     @abstractmethod
     def generate_data(self, train_df, test_df):
         raise NotImplementedError
 
+    @abstractmethod
+    def postprocess_data(self, train_df, test_df, ):
+        """Filtering data which far beyond from test_df data distribution"""
+        raise NotImplementedError
+
+    def adversarial_filtering(self, train_df, test_df, ):
+        raise NotImplementedError
+
 
 class SamplerOriginal(Sampler):
-    def __init__(self, gen_x_times, **kwargs):
+    def __init__(self, gen_x_times, cat_cols=None, bot_filter_quantile=0.001, top_filter_quantile=0.999,
+                 is_post_process=True):
         """
         :param gen_x_times: Factor for which initial dataframe should be increased
         """
-        self.args = kwargs
         self.gen_x_times = gen_x_times
+        self.cat_cols = cat_cols
+        self.is_post_process = is_post_process
+        self.bot_filter_quantile = bot_filter_quantile
+        self.top_filter_quantile = top_filter_quantile
 
     def preprocess_data(self, train_df, test_df, ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         return train_df, test_df
@@ -96,6 +113,27 @@ class SamplerOriginal(Sampler):
         train_df = pd.concat([train_df, generated_df], axis=0).reset_index(drop=True)
         del generated_df
         gc.collect()
+        return train_df
+
+    def postprocess_data(self, train_df, test_df, ):
+        if not self.is_post_process:
+            return train_df
+
+        for num_col in train_df.columns:
+            if self.cat_cols is None or num_col not in self.cat_cols:
+                min_val = test_df[num_col].quantile(self.bot_filter_quantile)
+                max_val = test_df[num_col].quantile(self.top_filter_quantile)
+                # todo add check if filtering is too heavy
+                generated_df = generated_df.loc[
+                    (generated_df[num_col] >= min_val) & (generated_df[num_col] <= max_val)
+                    ]
+        if self.cat_cols is not None:
+            for cat_col in self.cat_cols:
+                train_df = train_df[train_df[cat_col].isin(test_df[cat_col].unique())]
+
+        return train_df.reset_index(drop=True)
+
+    def adversarial_filtering(self, train_df, test_df, ):
         return train_df
 
 
@@ -107,30 +145,8 @@ class SamplerGAN(Sampler):
         return train_df
 
 
-class SamplerAdversarial(Sampler):
-    def __init__(self, gen_x_times, **kwargs):
-        """
-        :param gen_x_times: Factor for which initial dataframe should be increased
-        """
-        self.args = kwargs
-        self.gen_x_times = gen_x_times
-
-    def preprocess_data(self, train_df, test_df, ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        return train_df, test_df
-
-    def generate_data(self, train_df, test_df) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        x_test_bigger = self.get_generated_shape(train_df)
-        generated_df = train_df.sample(frac=x_test_bigger, replace=True, random_state=42)
-        generated_df = generated_df.reset_index(drop=True)
-        train_df = pd.concat([train_df, generated_df], axis=0).reset_index(drop=True)
-
-        #todo adversarial training
-        del generated_df
-        gc.collect()
-        return train_df
-
-
 def client_code(creator: SampleData, in_train, in_test) -> None:
+    # todo think about how user will be using soft
     _logger.info(f"Generated data.")
     _logger.info(creator.generate_data(in_train, in_test))
     _logger.info("\n")
@@ -151,12 +167,10 @@ def setup_logging(loglevel):
 if __name__ == "__main__":
     setup_logging(logging.DEBUG)
     train, test = pd.DataFrame([[1, 2], [3, 4]]), pd.DataFrame([[1, 2], [7, 10]])
+    target = pd.DataFrame([234234, 23])
     _logger.debug("App: Launched SamplerOriginal")
-    client_code(SamplerOriginal(gen_x_times=15), train, test)
+    client_code(SamplerOriginal(gen_x_times=15), train, target, test,)
 
     # _logger.debug("App: Launched SamplerGAN")
     # client_code(SamplerGAN(gen_x_times=1.5), train, test)
     #
-    _logger.debug("App: Launched SamplerGAN")
-    client_code(SamplerAdversarial(gen_x_times=0.6), train, test)
-    _logger.info("Script ends here")
