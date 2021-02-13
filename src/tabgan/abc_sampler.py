@@ -30,12 +30,10 @@ class SampleData(ABC):
         Defines logic for sampling
         """
         generator = self.get_object_generator()
-
         train_df, target, test_df = generator.preprocess_data(train_df, target, test_df)
         new_train, new_target = generator.generate_data(train_df, target, test_df)
-        new_train, new_target = generator.postprocess_data(new_train, target, test_df)
-        new_train, new_target = generator. \
-            adversarial_filtering(new_train, target, test_df)
+        new_train, new_target = generator.postprocess_data(new_train, new_target, test_df)
+        new_train, new_target = generator.adversarial_filtering(new_train, new_target, test_df)
         gc.collect()
         return new_train, new_target
 

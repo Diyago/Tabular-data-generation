@@ -76,18 +76,16 @@ class SamplerOriginal(Sampler):
         return train_df, target, test_df
 
     def generate_data(self, train_df, target, test_df) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        self._validate_data(train_df, target, test_df)
         train_df["_temp_target"] = target
-        generated_df = train_df.sample(frac=self.get_generated_shape(train_df),
-                                       replace=True, random_state=42)
-
+        generated_df = train_df.sample(frac=self.get_generated_shape(train_df), replace=True, random_state=42)
         generated_df = generated_df.reset_index(drop=True)
-        train_df = pd.concat([train_df, generated_df], axis=0).reset_index(drop=True)
-        return train_df.drop("_temp_target", axis=1), train_df["_temp_target"]
+        return generated_df.drop("_temp_target", axis=1), generated_df["_temp_target"]
 
     def postprocess_data(self, train_df, target, test_df, ):
         if not self.is_post_process:
             return train_df, target
-
+        self._validate_data(train_df, target, test_df)
         train_df["_temp_target"] = target
         for num_col in train_df.columns:
             if (self.cat_cols is None or num_col not in self.cat_cols) \
@@ -112,6 +110,7 @@ class SamplerOriginal(Sampler):
         self._validate_data(train_df, target, test_df)
         train_df["_temp_target"] = target
         ad_model.adversarial_test(test_df, train_df.drop("_temp_target", axis=1))
+
         train_df["test_similarity"] = ad_model.trained_model.predict(train_df.drop("_temp_target", axis=1),
                                                                      return_shape=False)
         train_df.sort_values("test_similarity", ascending=False, inplace=True)
@@ -124,6 +123,9 @@ class SamplerOriginal(Sampler):
             raise ValueError("Shape of train is {} and test is {} should at least 10! "
                              "Consider disabling adversarial training".
                              format(train_df.shape[0], test_df.shape[0]))
+        if train_df.shape[0] != target.shape[0]:
+            raise ValueError("Something gone wrong: shape of train_df = {} is not equal to target = {} shape"
+                             .format(train_df.shape[0], target.shape[0]))
 
 
 class SamplerGAN(SamplerOriginal):
@@ -144,11 +146,11 @@ def sampler(creator: SampleData, in_train, in_target, in_test) -> None:
 
 if __name__ == "__main__":
     setup_logging(logging.DEBUG)
-    train = pd.DataFrame(np.random.randint(-10, 150, size=(100, 4)), columns=list('ABCD'))
-    target = pd.DataFrame(np.random.randint(0, 1, size=(100, 1)), columns=list('Y'))
-    test = pd.DataFrame(np.random.randint(0, 100, size=(2000, 4)), columns=list('ABCD'))
+    train = pd.DataFrame(np.random.randint(-10, 150, size=(50, 4)), columns=list('ABCD'))
+    target = pd.DataFrame(np.random.randint(0, 2, size=(50, 1)), columns=list('Y'))
+    test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list('ABCD'))
 
-    sampler(OriginalGenerator(gen_x_times=1005), train, target, test, )
+    sampler(OriginalGenerator(gen_x_times=15), train, target, test, )
 
     # _logger.debug("App: Launched GANGenerator")
     # client_code(GANGenerator(gen_x_times=1.5), train, test)
