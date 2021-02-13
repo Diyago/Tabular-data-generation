@@ -2,25 +2,27 @@
 """
 todo write description
 
-Based on factory method from https://refactoring.guru/ru/design-patterns/factory-method/python/example
 """
 
 from __future__ import annotations
 
 import gc
+from typing import Tuple
 import logging
-import sys
+
+from abc import ABC, abstractmethod
+import pandas as pd
+from utils import setup_logging
+from adversarial_model import AdversarialModel
 
 __author__ = "Insaf Ashrapov"
 __copyright__ = "Insaf Ashrapov"
 __license__ = "Apache 2.0"
 
-from typing import Tuple
-
-_logger = logging.getLogger(__name__)
-
-from abc import ABC, abstractmethod
-import pandas as pd
+__all__ = [
+    "SamplerOriginal",
+    "SamplerGAN"
+]
 
 
 class SampleData(ABC):
@@ -45,7 +47,8 @@ class SampleData(ABC):
         train_df, test_df = generator.preprocess_data(train_df, test_df)
         new_train = generator(train_df, test_df)
         new_train = generator.postprocess_data(new_train)
-        new_train, new_target = generator.adversarial_filtering(new_train, target, test_df)
+        new_train, new_target = generator. \
+            adversarial_filtering(new_train, target, test_df)
         return new_train, new_target
 
 
@@ -79,7 +82,7 @@ class Sampler(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def generate_data(self, train_df, test_df):
+    def generate_data(self, train_df, target, test_df):
         raise NotImplementedError
 
     @abstractmethod
@@ -93,7 +96,14 @@ class Sampler(ABC):
 
 class SamplerOriginal(Sampler):
     def __init__(self, gen_x_times, cat_cols=None, bot_filter_quantile=0.001, top_filter_quantile=0.999,
-                 is_post_process=True):
+                 is_post_process=True, adversaial_model_params={
+                "metrics": "AUC",
+                "max_depth": 2,
+                "max_bin": 100,
+                "n_estimators": 500,
+                "learning_rate": 0.02,
+                "random_state": 42,
+            }):
         """
         :param gen_x_times: Factor for which initial dataframe should be increased
         """
@@ -102,13 +112,14 @@ class SamplerOriginal(Sampler):
         self.is_post_process = is_post_process
         self.bot_filter_quantile = bot_filter_quantile
         self.top_filter_quantile = top_filter_quantile
+        self.adversaial_model_params = adversaial_model_params
 
     def preprocess_data(self, train_df, test_df, ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         return train_df, test_df
 
-    def generate_data(self, train_df, test_df) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        x_test_bigger = self.get_generated_shape(train_df)
-        generated_df = train_df.sample(frac=x_test_bigger, replace=True, random_state=42)
+    def generate_data(self, train_df, target, test_df) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        generated_df = train_df.sample(frac=self.get_generated_shape(train_df),
+                                       replace=True, random_state=42)
         generated_df = generated_df.reset_index(drop=True)
         train_df = pd.concat([train_df, generated_df], axis=0).reset_index(drop=True)
         del generated_df
@@ -133,43 +144,44 @@ class SamplerOriginal(Sampler):
 
         return train_df.reset_index(drop=True)
 
-    def adversarial_filtering(self, train_df, test_df, ):
-        return train_df
+    def adversarial_filtering(self, train_df, target, test_df, ):
+        # todo add more init params to AdversarialModel, think about kwargs
+        ad_model = AdversarialModel(cat_cols=self.cat_cols,
+                                    model_params=self.model_params)
+        ad_model = ad_model.adversarial_test(test_df, train_df)
+
+        train_df["test_similarity"] = ad_model.trained_model.predict(train_df, return_shape=False)
+        train_df.sort_values("test_similarity", ascending=False, inplace=True)
+
+        return train_df, target[train_df.index]
 
 
 class SamplerGAN(Sampler):
     def preprocess_data(self, train_df, test_df, ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         return train_df, test_df
 
-    def generate_data(self, train_df, test_df):
+    def generate_data(self, train_df, target, test_df):
         return train_df
 
+    def adversarial_filtering(self, train_df, target, test_df, ):
+        return train_df, target
 
-def client_code(creator: SampleData, in_train, in_test) -> None:
+    # generated_df = train_df.head(int(gen_x_times * x_train.shape[0]))
+
+
+def client_code(creator: SampleData, in_train, in_target, in_test) -> None:
     # todo think about how user will be using soft
+    _logger = logging.getLogger(__name__)
     _logger.info(f"Generated data.")
-    _logger.info(creator.generate_data(in_train, in_test))
+    _logger.info(creator.generate_data(in_train, in_target, in_test))
     _logger.info("\n")
-
-
-def setup_logging(loglevel):
-    """Setup basic logging
-
-    Args:
-      loglevel (int): minimum loglevel for emitting messages
-    """
-    logformat = "[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
-    logging.basicConfig(
-        level=loglevel, stream=sys.stdout, format=logformat, datefmt="%Y-%m-%d %H:%M:%S"
-    )
 
 
 if __name__ == "__main__":
     setup_logging(logging.DEBUG)
     train, test = pd.DataFrame([[1, 2], [3, 4]]), pd.DataFrame([[1, 2], [7, 10]])
     target = pd.DataFrame([234234, 23])
-    _logger.debug("App: Launched SamplerOriginal")
-    client_code(SamplerOriginal(gen_x_times=15), train, target, test,)
+    client_code(SamplerOriginal(gen_x_times=15), train, target, test, )
 
     # _logger.debug("App: Launched SamplerGAN")
     # client_code(SamplerGAN(gen_x_times=1.5), train, test)
