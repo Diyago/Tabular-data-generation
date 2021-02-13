@@ -2,6 +2,7 @@
 """
 todo write description
 
+Based on factory method from https://refactoring.guru/ru/design-patterns/factory-method/python/example
 """
 
 from __future__ import annotations
@@ -10,9 +11,10 @@ import gc
 from typing import Tuple
 import logging
 
-from abc import ABC, abstractmethod
 import pandas as pd
+import numpy as np
 from utils import setup_logging
+from abc_sampler import Sampler, SampleData
 from adversarial_model import AdversarialModel
 
 __author__ = "Insaf Ashrapov"
@@ -25,77 +27,27 @@ __all__ = [
 ]
 
 
-class SampleData(ABC):
-    """
-        Factory method for different sampler strategies. The goal is to generate more train data
-        which should be more close to test, in other word we trying to fix uneven distribution.
-    """
+class OriginalGenerator(SampleData):
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
 
-    @abstractmethod
-    def get_object_generator(self):
-        """
-        Getter for object sampler aka generator, which is not a generator
-        """
-        raise NotImplementedError
-
-    def generate_data(self, train_df, target, test_df) -> pd.DataFrame:
-        """
-        Defines logic for sampling
-        """
-        generator = self.get_object_generator()
-
-        train_df, test_df = generator.preprocess_data(train_df, test_df)
-        new_train = generator(train_df, test_df)
-        new_train = generator.postprocess_data(new_train)
-        new_train, new_target = generator. \
-            adversarial_filtering(new_train, target, test_df)
-        return new_train, new_target
-
-
-class SamplerOriginalGenerator(SampleData):
     def get_object_generator(self) -> Sampler:
-        return SamplerOriginal()
+        return SamplerOriginal(*self.args, **self.kwargs)
 
 
-class SamplerGANGenerator(SampleData):
+class GANGenerator(SampleData):
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+
     def get_object_generator(self) -> Sampler:
-        return SamplerGAN()
-
-
-class Sampler(ABC):
-    """
-        Interface for each sampling strategy
-    """
-
-    def get_generated_shape(self, input_df):
-        """
-        Calcs final output shape
-        """
-        if self.gen_x_times <= 0:
-            raise ValueError("Passed gen_x_times = {} should be bigger than 0".format(self.gen_x_times))
-        return int(self.gen_x_times * input_df.shape[0] / input_df.shape[0])
-
-    @abstractmethod
-    def preprocess_data(self, train_df, test_df, ):
-        """Before we can start data generation we might need some preprosing, numpy to pandas
-        and etc"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def generate_data(self, train_df, target, test_df):
-        raise NotImplementedError
-
-    @abstractmethod
-    def postprocess_data(self, train_df, test_df, ):
-        """Filtering data which far beyond from test_df data distribution"""
-        raise NotImplementedError
-
-    def adversarial_filtering(self, train_df, test_df, ):
-        raise NotImplementedError
+        return SamplerGAN(*self.args, **self.kwargs)
 
 
 class SamplerOriginal(Sampler):
-    def __init__(self, gen_x_times, cat_cols=None, bot_filter_quantile=0.001, top_filter_quantile=0.999,
+    def __init__(self, gen_x_times, cat_cols=None, bot_filter_quantile=0.001,
+                 top_filter_quantile=0.999,
                  is_post_process=True, adversaial_model_params={
                 "metrics": "AUC",
                 "max_depth": 2,
@@ -112,77 +64,92 @@ class SamplerOriginal(Sampler):
         self.is_post_process = is_post_process
         self.bot_filter_quantile = bot_filter_quantile
         self.top_filter_quantile = top_filter_quantile
-        self.adversaial_model_params = adversaial_model_params
+        self.adversarial_model_params = adversaial_model_params
 
-    def preprocess_data(self, train_df, test_df, ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        return train_df, test_df
+    def preprocess_data(self, train_df, target, test_df, ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        if "_temp_target" in train_df.columns:
+            raise ValueError("Input train dataframe already have _temp_target, condiser removing it")
+        if "test_similarity" in train_df.columns:
+            raise ValueError("Input train dataframe already have test_similarity, condiser removing it")
+        # todo check data types np -> pd
+
+        return train_df, target, test_df
 
     def generate_data(self, train_df, target, test_df) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        train_df["_temp_target"] = target
         generated_df = train_df.sample(frac=self.get_generated_shape(train_df),
                                        replace=True, random_state=42)
+
         generated_df = generated_df.reset_index(drop=True)
         train_df = pd.concat([train_df, generated_df], axis=0).reset_index(drop=True)
-        del generated_df
-        gc.collect()
-        return train_df
+        return train_df.drop("_temp_target", axis=1), train_df["_temp_target"]
 
-    def postprocess_data(self, train_df, test_df, ):
+    def postprocess_data(self, train_df, target, test_df, ):
         if not self.is_post_process:
-            return train_df
+            return train_df, target
 
+        train_df["_temp_target"] = target
         for num_col in train_df.columns:
-            if self.cat_cols is None or num_col not in self.cat_cols:
+            if (self.cat_cols is None or num_col not in self.cat_cols) \
+                    and num_col != "_temp_target":
                 min_val = test_df[num_col].quantile(self.bot_filter_quantile)
                 max_val = test_df[num_col].quantile(self.top_filter_quantile)
                 # todo add check if filtering is too heavy
-                generated_df = generated_df.loc[
-                    (generated_df[num_col] >= min_val) & (generated_df[num_col] <= max_val)
+                train_df = train_df.loc[
+                    (train_df[num_col] >= min_val) & (train_df[num_col] <= max_val)
                     ]
         if self.cat_cols is not None:
             for cat_col in self.cat_cols:
                 train_df = train_df[train_df[cat_col].isin(test_df[cat_col].unique())]
-
-        return train_df.reset_index(drop=True)
+        return train_df.drop("_temp_target", axis=1), train_df["_temp_target"]
 
     def adversarial_filtering(self, train_df, target, test_df, ):
         # todo add more init params to AdversarialModel, think about kwargs
-        ad_model = AdversarialModel(cat_cols=self.cat_cols,
-                                    model_params=self.model_params)
-        ad_model = ad_model.adversarial_test(test_df, train_df)
+        # todo param to give user choose use or not use adversarial_filtering
 
-        train_df["test_similarity"] = ad_model.trained_model.predict(train_df, return_shape=False)
+        ad_model = AdversarialModel(cat_cols=self.cat_cols,
+                                    model_params=self.adversarial_model_params)
+        self._validate_data(train_df, target, test_df)
+        train_df["_temp_target"] = target
+        ad_model.adversarial_test(test_df, train_df.drop("_temp_target", axis=1))
+        train_df["test_similarity"] = ad_model.trained_model.predict(train_df.drop("_temp_target", axis=1),
+                                                                     return_shape=False)
         train_df.sort_values("test_similarity", ascending=False, inplace=True)
 
-        return train_df, target[train_df.index]
+        # TODO leave only top required data
+        return train_df.drop(["test_similarity", "_temp_target"], axis=1), train_df["_temp_target"]
+
+    def _validate_data(self, train_df, target, test_df):
+        if train_df.shape[0] < 10 or test_df.shape[0] < 10:
+            raise ValueError("Shape of train is {} and test is {} should at least 10! "
+                             "Consider disabling adversarial training".
+                             format(train_df.shape[0], test_df.shape[0]))
 
 
-class SamplerGAN(Sampler):
-    def preprocess_data(self, train_df, test_df, ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        return train_df, test_df
-
-    def generate_data(self, train_df, target, test_df):
-        return train_df
+class SamplerGAN(SamplerOriginal):
 
     def adversarial_filtering(self, train_df, target, test_df, ):
+        train_df, target = super().adversarial_filtering(self, train_df, target, test_df, )
+        train_df, target = super().postprocess_data(self, train_df, target, test_df, )
         return train_df, target
 
-    # generated_df = train_df.head(int(gen_x_times * x_train.shape[0]))
 
-
-def client_code(creator: SampleData, in_train, in_target, in_test) -> None:
-    # todo think about how user will be using soft
+def sampler(creator: SampleData, in_train, in_target, in_test) -> None:
+    # todo think about how user will be using library
     _logger = logging.getLogger(__name__)
-    _logger.info(f"Generated data.")
-    _logger.info(creator.generate_data(in_train, in_target, in_test))
+    _logger.info("Generated data.")
+    _logger.info(creator.generate_data_pipe(in_train, in_target, in_test))
     _logger.info("\n")
 
 
 if __name__ == "__main__":
     setup_logging(logging.DEBUG)
-    train, test = pd.DataFrame([[1, 2], [3, 4]]), pd.DataFrame([[1, 2], [7, 10]])
-    target = pd.DataFrame([234234, 23])
-    client_code(SamplerOriginal(gen_x_times=15), train, target, test, )
+    train = pd.DataFrame(np.random.randint(-10, 150, size=(100, 4)), columns=list('ABCD'))
+    target = pd.DataFrame(np.random.randint(0, 1, size=(100, 1)), columns=list('Y'))
+    test = pd.DataFrame(np.random.randint(0, 100, size=(2000, 4)), columns=list('ABCD'))
 
-    # _logger.debug("App: Launched SamplerGAN")
-    # client_code(SamplerGAN(gen_x_times=1.5), train, test)
+    sampler(OriginalGenerator(gen_x_times=1005), train, target, test, )
+
+    # _logger.debug("App: Launched GANGenerator")
+    # client_code(GANGenerator(gen_x_times=1.5), train, test)
     #

@@ -30,7 +30,7 @@ class AdversarialModel:
         self.encoders_names = encoders_names
         self.cat_cols = cat_cols
         self.model_validation = model_validation
-        self.model_params - model_params
+        self.model_params = model_params
 
     def adversarial_test(self, left_df, right_df):
         """
@@ -64,6 +64,7 @@ class AdversarialModel:
                         "val_score": val_score,
                         "avg_num_trees": avg_num_trees}
         self.trained_model = lgb_model
+
 
 class Model:
     def __init__(
@@ -130,25 +131,25 @@ class Model:
                 X.iloc[val_idx].reset_index(drop=True),
             )
             y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
+            if self.cat_cols is not None:
+                if self.cat_validation == "Single":
+                    encoder = MultipleEncoder(
+                        cols=self.cat_cols, encoders_names_tuple=self.encoders_names
+                    )
+                    X_train = encoder.fit_transform(X_train, y_train)
+                    X_val = encoder.transform(X_val)
+                if self.cat_validation == "Double":
+                    encoder = DoubleValidationEncoderNumerical(
+                        cols=self.cat_cols, encoders_names_tuple=self.encoders_names
+                    )
+                    X_train = encoder.fit_transform(X_train, y_train)
+                    X_val = encoder.transform(X_val)
+                self.encoders_list.append(encoder)
 
-            if self.cat_validation == "Single":
-                encoder = MultipleEncoder(
-                    cols=self.cat_cols, encoders_names_tuple=self.encoders_names
-                )
-                X_train = encoder.fit_transform(X_train, y_train)
-                X_val = encoder.transform(X_val)
-            if self.cat_validation == "Double":
-                encoder = DoubleValidationEncoderNumerical(
-                    cols=self.cat_cols, encoders_names_tuple=self.encoders_names
-                )
-                X_train = encoder.fit_transform(X_train, y_train)
-                X_val = encoder.transform(X_val)
-            self.encoders_list.append(encoder)
-
-            # check for OrdinalEncoder encoding
-            for col in [col for col in X_train.columns if "OrdinalEncoder" in col]:
-                X_train[col] = X_train[col].astype("category")
-                X_val[col] = X_val[col].astype("category")
+                # check for OrdinalEncoder encoding
+                for col in [col for col in X_train.columns if "OrdinalEncoder" in col]:
+                    X_train[col] = X_train[col].astype("category")
+                    X_val[col] = X_val[col].astype("category")
 
             # fit model
             model = LGBMClassifier(**self.model_params)
@@ -172,8 +173,7 @@ class Model:
         mean_score_train = np.mean(self.scores_list_train)
         mean_score_val = np.mean(self.scores_list_val)
         avg_num_trees = int(np.mean(self.models_trees))
-        print(f"Mean score train : {np.round(mean_score_train, 4)}")
-        print(f"Mean score val : {np.round(mean_score_val, 4)}")
+
         return mean_score_train, mean_score_val, avg_num_trees
 
     def predict(self, X: pd.DataFrame, return_shape=True) -> np.array:
