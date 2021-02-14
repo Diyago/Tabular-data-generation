@@ -10,7 +10,11 @@
 
 2. Building new distributive: `python setup.py sdist`
    * If generated file under `./dist` folder contains `.dirty` like this: `'tabgan-0.1.3+g5249cf6.dirty`
- you should fix that!
+ you should fix that! In order to do that, you should look for uncommited files: `git status`
+
+3. Uploading project to test PIP:
+`twine upload --repository-url https://test.pypi.org/legacy/ dist/*`
+
 # Contributor Covenant Code of Conduct
 
 ## Our Pledge
