@@ -151,7 +151,7 @@ def extend_gan_train(x_train, y_train, x_test, cat_cols, gen_x_times=1.2, epochs
 
     generated_df = pd.concat(
         [
-            x_train.sample(frac=(x_test_bigger), replace=True, random_state=42),
+            x_train,
             generated_df,
         ]
     ).reset_index(drop=True)

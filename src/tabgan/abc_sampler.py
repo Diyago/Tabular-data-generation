@@ -25,13 +25,16 @@ class SampleData(ABC):
         """
         raise NotImplementedError
 
-    def generate_data_pipe(self, train_df, target, test_df) -> pd.DataFrame:
+    def generate_data_pipe(self, train_df, target, test_df, deep_copy=True) -> pd.DataFrame:
         """
         Defines logic for sampling
         """
         generator = self.get_object_generator()
-        train_df, target, test_df = generator.preprocess_data(train_df, target, test_df)
-        new_train, new_target = generator.generate_data(train_df, target, test_df)
+        if deep_copy:
+            new_train, new_target, test_df = generator.preprocess_data(train_df, target, test_df)
+        else:
+            new_train, new_target, test_df = generator.preprocess_data(train_df.copy(), target.copy(), test_df)
+        new_train, new_target = generator.generate_data(new_train, new_target, test_df)
         new_train, new_target = generator.postprocess_data(new_train, new_target, test_df)
         new_train, new_target = generator.adversarial_filtering(new_train, new_target, test_df)
         gc.collect()
@@ -49,7 +52,7 @@ class Sampler(ABC):
         """
         if self.gen_x_times <= 0:
             raise ValueError("Passed gen_x_times = {} should be bigger than 0".format(self.gen_x_times))
-        return int(self.gen_x_times * input_df.shape[0] / input_df.shape[0])
+        return int(self.gen_x_times * input_df.shape[0])
 
     @abstractmethod
     def preprocess_data(self, train_df, target, test_df, ):
@@ -66,5 +69,6 @@ class Sampler(ABC):
         """Filtering data which far beyond from test_df data distribution"""
         raise NotImplementedError
 
+    @abstractmethod
     def adversarial_filtering(self, train_df, target, test_df, ):
         raise NotImplementedError

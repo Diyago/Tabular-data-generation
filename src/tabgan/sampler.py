@@ -14,6 +14,7 @@ import logging
 import pandas as pd
 import numpy as np
 from utils import setup_logging
+from src.ctgan import CTGANSynthesizer
 from abc_sampler import Sampler, SampleData
 from adversarial_model import AdversarialModel
 
@@ -55,7 +56,7 @@ class SamplerOriginal(Sampler):
                 "n_estimators": 500,
                 "learning_rate": 0.02,
                 "random_state": 42,
-            }):
+            }, pregeneration_frac=2):
         """
         :param gen_x_times: Factor for which initial dataframe should be increased
         """
@@ -65,6 +66,7 @@ class SamplerOriginal(Sampler):
         self.bot_filter_quantile = bot_filter_quantile
         self.top_filter_quantile = top_filter_quantile
         self.adversarial_model_params = adversaial_model_params
+        self.pregeneration_frac = pregeneration_frac
 
     def preprocess_data(self, train_df, target, test_df, ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         if "_temp_target" in train_df.columns:
@@ -78,7 +80,8 @@ class SamplerOriginal(Sampler):
     def generate_data(self, train_df, target, test_df) -> Tuple[pd.DataFrame, pd.DataFrame]:
         self._validate_data(train_df, target, test_df)
         train_df["_temp_target"] = target
-        generated_df = train_df.sample(frac=self.get_generated_shape(train_df), replace=True, random_state=42)
+        generated_df = train_df.sample(frac=(1 + self.pregeneration_frac * self.get_generated_shape(train_df)),
+                                       replace=True, random_state=42)
         generated_df = generated_df.reset_index(drop=True)
         return generated_df.drop("_temp_target", axis=1), generated_df["_temp_target"]
 
@@ -115,7 +118,7 @@ class SamplerOriginal(Sampler):
                                                                      return_shape=False)
         train_df.sort_values("test_similarity", ascending=False, inplace=True)
 
-        # TODO leave only top required data
+        train_df = train_df.head(self.get_generated_shape(train_df) * train_df.shape[0])
         return train_df.drop(["test_similarity", "_temp_target"], axis=1), train_df["_temp_target"]
 
     def _validate_data(self, train_df, target, test_df):
@@ -129,19 +132,50 @@ class SamplerOriginal(Sampler):
 
 
 class SamplerGAN(SamplerOriginal):
+    def __init__(self, gen_x_times, cat_cols=None, bot_filter_quantile=0.001,
+                 top_filter_quantile=0.999,
+                 is_post_process=True, adversaial_model_params={
+                "metrics": "AUC",
+                "max_depth": 2,
+                "max_bin": 100,
+                "n_estimators": 500,
+                "learning_rate": 0.02,
+                "random_state": 42,
+            }, epochs=500, pregeneration_frac=2):
+        """
+        :param gen_x_times: Factor for which initial dataframe should be increased
+        """
+        self.gen_x_times = gen_x_times
+        self.cat_cols = cat_cols
+        self.is_post_process = is_post_process
+        self.bot_filter_quantile = bot_filter_quantile
+        self.top_filter_quantile = top_filter_quantile
+        self.adversarial_model_params = adversaial_model_params
+        self.epochs = epochs
+        self.pregeneration_frac = pregeneration_frac
 
-    def adversarial_filtering(self, train_df, target, test_df, ):
-        train_df, target = super().adversarial_filtering(self, train_df, target, test_df, )
-        train_df, target = super().postprocess_data(self, train_df, target, test_df, )
-        return train_df, target
+    def generate_data(self, train_df, target, test_df) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        self._validate_data(train_df, target, test_df)
+        train_df["_temp_target"] = target
+        ctgan = CTGANSynthesizer()
+        ctgan.fit(train_df, self.cat_cols, epochs=self.epochs)
+        generated_df = ctgan.sample(self.pregeneration_frac * self.get_generated_shape(train_df))
+        data_dtype = train_df.dtypes.values
+
+        for i in range(len(generated_df.columns)):
+            generated_df[generated_df.columns[i]] = generated_df[generated_df.columns[i]
+            ].astype(data_dtype[i])
+
+        train_df = pd.concat([train_df, generated_df, ]).reset_index(drop=True)
+        return train_df.drop("_temp_target", axis=1), train_df["_temp_target"]
 
 
 def sampler(creator: SampleData, in_train, in_target, in_test) -> None:
     # todo think about how user will be using library
     _logger = logging.getLogger(__name__)
-    _logger.info("Generated data.")
+    _logger.info("Starting generating data:")
     _logger.info(creator.generate_data_pipe(in_train, in_target, in_test))
-    _logger.info("\n")
+    _logger.info("Finished generatation\n")
 
 
 if __name__ == "__main__":
@@ -151,7 +185,4 @@ if __name__ == "__main__":
     test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list('ABCD'))
 
     sampler(OriginalGenerator(gen_x_times=15), train, target, test, )
-
-    # _logger.debug("App: Launched GANGenerator")
-    # client_code(GANGenerator(gen_x_times=1.5), train, test)
-    #
+    sampler(GANGenerator(gen_x_times=10), train, target, test, )
