@@ -5,17 +5,19 @@ todo write description
 Based on factory method from https://refactoring.guru/ru/design-patterns/factory-method/python/example
 """
 
-
 import logging
+import warnings
 from typing import Tuple
 
 import numpy as np
 import pandas as pd
 
-from _abc_sampler import Sampler, SampleData
-from _adversarial_model import AdversarialModel
-from _utils import setup_logging
+from abc_sampler import Sampler, SampleData
+from adversarial_model import AdversarialModel
 from src.ctgan import CTGANSynthesizer
+from utils import setup_logging
+
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 __author__ = "Insaf Ashrapov"
 __copyright__ = "Insaf Ashrapov"
@@ -157,7 +159,10 @@ class SamplerGAN(SamplerOriginal):
         self._validate_data(train_df, target, test_df)
         train_df["_temp_target"] = target
         ctgan = CTGANSynthesizer()
-        ctgan.fit(train_df, self.cat_cols, epochs=self.epochs)
+        if self.cat_cols is None:
+            ctgan.fit(train_df, [], epochs=self.epochs)
+        else:
+            ctgan.fit(train_df, self.cat_cols, epochs=self.epochs)
         generated_df = ctgan.sample(self.pregeneration_frac * self.get_generated_shape(train_df))
         data_dtype = train_df.dtypes.values
 
