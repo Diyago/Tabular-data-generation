@@ -1,11 +1,11 @@
 import numpy as np
 
 
-class Sampler(object):
+class _Sampler(object):
     """docstring for Sampler."""
 
     def __init__(self, data, output_info):
-        super(Sampler, self).__init__()
+        super(_Sampler, self).__init__()
         self.data = data
         self.model = []
         self.n = len(data)

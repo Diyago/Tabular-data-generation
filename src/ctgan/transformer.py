@@ -6,7 +6,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.utils._testing import ignore_warnings
 
 
-class DataTransformer(object):
+class _DataTransformer(object):
     """Data Transformer.
 
     Model continuous columns with a BayesianGMM and normalized to a scalar

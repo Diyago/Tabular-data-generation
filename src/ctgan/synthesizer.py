@@ -3,13 +3,13 @@ import torch
 from torch import optim
 from torch.nn import functional
 
-from ctgan._conditional import ConditionalGenerator
-from ctgan._models import Discriminator, Generator
-from ctgan._sampler import Sampler
-from ctgan._transformer import DataTransformer
+from ctgan._sampler import _Sampler
+from ctgan.conditional import _ConditionalGenerator
+from ctgan.models import Discriminator, Generator
+from ctgan.transformer import _DataTransformer
 
 
-class EarlyStopping:
+class _EarlyStopping:
     """Early stops the training if validation loss doesn't improve after a given patience."""
 
     def __init__(self, patience=7, verbose=False, delta=0):
@@ -46,7 +46,7 @@ class EarlyStopping:
             self.counter = 0
 
 
-class CTGANSynthesizer(object):
+class _CTGANSynthesizer(object):
     """Conditional Table GAN Synthesizer.
 
     This is the core class of the CTGAN project, where the different components
@@ -151,14 +151,14 @@ class CTGANSynthesizer(object):
                 sampling. Defaults to ``True``.
         """
 
-        self.transformer = DataTransformer()
+        self.transformer = _DataTransformer()
         self.transformer.fit(train_data, discrete_columns)
         train_data = self.transformer.transform(train_data)
 
-        data_sampler = Sampler(train_data, self.transformer.output_info)
+        data_sampler = _Sampler(train_data, self.transformer.output_info)
 
         data_dim = self.transformer.output_dimensions
-        self.cond_generator = ConditionalGenerator(
+        self.cond_generator = _ConditionalGenerator(
             train_data,
             self.transformer.output_info,
             log_frequency
@@ -186,7 +186,7 @@ class CTGANSynthesizer(object):
         std = mean + 1
 
         train_losses = []
-        early_stopping = EarlyStopping(patience=self.patience, verbose=False)
+        early_stopping = _EarlyStopping(patience=self.patience, verbose=False)
 
         steps_per_epoch = max(len(train_data) // self.batch_size, 1)
         for i in range(epochs):

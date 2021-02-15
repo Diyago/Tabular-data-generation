@@ -6,10 +6,9 @@ __author__ = 'MIT Data To AI Lab'
 __email__ = 'dailabmit@gmail.com'
 __version__ = '0.2.1'
 
-from ctgan._demo import load_demo
-from ctgan._synthesizer import CTGANSynthesizer
+from ctgan.synthesizer import _CTGANSynthesizer
 
 __all__ = (
-    'CTGANSynthesizer',
+    '_CTGANSynthesizer',
     'load_demo'
 )

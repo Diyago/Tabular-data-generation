@@ -140,7 +140,7 @@ Once you have the data ready, you need to import and create an instance of the `
 class and fit it passing your data and the list of discrete columns.
 
 ```python
-from ctgan import CTGANSynthesizer
+from ctgan import _CTGANSynthesizer
 
 ctgan = CTGANSynthesizer()
 ctgan.fit(data, discrete_columns)

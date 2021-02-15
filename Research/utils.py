@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedKFold
 
-from ctgan import CTGANSynthesizer
+from ctgan import _CTGANSynthesizer
 from model import Model
 
 
@@ -139,7 +139,7 @@ def extend_gan_train(x_train, y_train, x_test, cat_cols, gen_x_times=1.2, epochs
         raise ValueError("Passed gen_x_times with value 0!")
     x_train["target"] = y_train
     x_test_bigger = int(1.1 * x_test.shape[0] / x_train.shape[0])
-    ctgan = CTGANSynthesizer()
+    ctgan = _CTGANSynthesizer()
     ctgan.fit(x_train, cat_cols, epochs=epochs)
     generated_df = ctgan.sample((x_test_bigger) * x_train.shape[0])
     data_dtype = x_train.dtypes.values

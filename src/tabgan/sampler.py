@@ -14,7 +14,7 @@ import pandas as pd
 
 from abc_sampler import Sampler, SampleData
 from adversarial_model import AdversarialModel
-from src.ctgan import CTGANSynthesizer
+from src.ctgan import _CTGANSynthesizer
 from utils import setup_logging
 
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -158,7 +158,7 @@ class SamplerGAN(SamplerOriginal):
     def generate_data(self, train_df, target, test_df) -> Tuple[pd.DataFrame, pd.DataFrame]:
         self._validate_data(train_df, target, test_df)
         train_df["_temp_target"] = target
-        ctgan = CTGANSynthesizer()
+        ctgan = _CTGANSynthesizer()
         if self.cat_cols is None:
             ctgan.fit(train_df, [], epochs=self.epochs)
         else:
