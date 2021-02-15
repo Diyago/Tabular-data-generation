@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 todo write description
-
-Based on factory method from https://refactoring.guru/ru/design-patterns/factory-method/python/example
 """
 
 import logging
@@ -12,9 +10,9 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 
-from abc_sampler import Sampler, SampleData
-from adversarial_model import AdversarialModel
-from src._ctgan import _CTGANSynthesizer
+from _ctgan.synthesizer import _CTGANSynthesizer
+from tabgan.abc_sampler import Sampler, SampleData
+from tabgan.adversarial_model import AdversarialModel
 from utils import setup_logging
 
 warnings.filterwarnings("ignore", category=FutureWarning)
