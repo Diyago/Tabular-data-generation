@@ -10,3 +10,9 @@ except DistributionNotFound:
 finally:
     del get_distribution, DistributionNotFound
 
+from tabgan.sampler import SamplerOriginal, SamplerGAN
+
+__all__ = [
+    "SamplerOriginal",
+    "SamplerGAN"
+]

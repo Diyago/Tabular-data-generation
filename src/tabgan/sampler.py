@@ -13,7 +13,7 @@ import pandas as pd
 from _ctgan.synthesizer import _CTGANSynthesizer
 from tabgan.abc_sampler import Sampler, SampleData
 from tabgan.adversarial_model import AdversarialModel
-from utils import setup_logging
+from tabgan.utils import setup_logging
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 

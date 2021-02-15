@@ -262,13 +262,8 @@ class _CTGANSynthesizer(object):
                 optimizerG.step()
             early_stopping(np.average(train_losses))
             if early_stopping.early_stop:
-                print("GAN: Early stopping after epochs {}".format(i))
                 break
             train_losses = []
-
-            # print("Epoch %d, Loss G: %.4f, Loss D: %.4f" %
-            #       (i + 1, loss_g.detach().cpu(), loss_d.detach().cpu()),
-            #       flush=True)
 
     def sample(self, n):
         """Sample data similar to the training data.

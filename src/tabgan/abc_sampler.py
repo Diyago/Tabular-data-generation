@@ -1,5 +1,6 @@
 import gc
 from abc import ABC, abstractmethod
+from typing import Tuple
 
 import pandas as pd
 
@@ -21,9 +22,15 @@ class SampleData(ABC):
         """
         raise NotImplementedError
 
-    def generate_data_pipe(self, train_df, target, test_df, deep_copy=True) -> pd.DataFrame:
+    def generate_data_pipe(self, train_df: pd.DataFrame, target: pd.DataFrame, test_df: pd.DataFrame,
+                           deep_copy: bool = True) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Defines logic for sampling
+        @param train_df: Train dataframe which has separate target
+        @param target: Input target for the train dataset
+        @param test_df: Test dataframe - newly generated train dataframe should be close to it
+        @param deep_copy: make copy of input files or not. If not input dataframes will be overridden
+        @return: Newly generated train dataframe and test data
         """
         generator = self.get_object_generator()
         if deep_copy:
