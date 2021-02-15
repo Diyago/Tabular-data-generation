@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class _ConditionalGenerator(object):
+class ConditionalGenerator(object):
     def __init__(self, data, output_info, log_frequency):
         self.model = []
 

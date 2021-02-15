@@ -14,7 +14,7 @@ import pandas as pd
 
 from abc_sampler import Sampler, SampleData
 from adversarial_model import AdversarialModel
-from src.ctgan import _CTGANSynthesizer
+from src._ctgan import _CTGANSynthesizer
 from utils import setup_logging
 
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -174,7 +174,7 @@ class SamplerGAN(SamplerOriginal):
         return train_df.drop("_temp_target", axis=1), train_df["_temp_target"]
 
 
-def sampler(creator: SampleData, in_train, in_target, in_test) -> None:
+def _sampler(creator: SampleData, in_train, in_target, in_test) -> None:
     # todo think about how user will be using library
     _logger = logging.getLogger(__name__)
     _logger.info("Starting generating data:")
@@ -188,5 +188,5 @@ if __name__ == "__main__":
     target = pd.DataFrame(np.random.randint(0, 2, size=(50, 1)), columns=list('Y'))
     test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list('ABCD'))
 
-    sampler(OriginalGenerator(gen_x_times=15), train, target, test, )
-    sampler(GANGenerator(gen_x_times=10), train, target, test, )
+    _sampler(OriginalGenerator(gen_x_times=15), train, target, test, )
+    _sampler(GANGenerator(gen_x_times=10), train, target, test, )
