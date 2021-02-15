@@ -5,18 +5,17 @@ todo write description
 Based on factory method from https://refactoring.guru/ru/design-patterns/factory-method/python/example
 """
 
-from __future__ import annotations
 
-import gc
-from typing import Tuple
 import logging
+from typing import Tuple
 
-import pandas as pd
 import numpy as np
-from utils import setup_logging
+import pandas as pd
+
+from _abc_sampler import Sampler, SampleData
+from _adversarial_model import AdversarialModel
+from _utils import setup_logging
 from src.ctgan import CTGANSynthesizer
-from abc_sampler import Sampler, SampleData
-from adversarial_model import AdversarialModel
 
 __author__ = "Insaf Ashrapov"
 __copyright__ = "Insaf Ashrapov"

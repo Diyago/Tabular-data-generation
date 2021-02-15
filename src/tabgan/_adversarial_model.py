@@ -4,7 +4,8 @@ from lightgbm import LGBMClassifier
 from scipy.stats import rankdata
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedKFold
-from encoders import MultipleEncoder, DoubleValidationEncoderNumerical
+
+from _encoders import MultipleEncoder, DoubleValidationEncoderNumerical
 
 
 class AdversarialModel:
