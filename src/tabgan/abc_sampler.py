@@ -23,13 +23,17 @@ class SampleData(ABC):
         raise NotImplementedError
 
     def generate_data_pipe(self, train_df: pd.DataFrame, target: pd.DataFrame, test_df: pd.DataFrame,
-                           deep_copy: bool = True) -> Tuple[pd.DataFrame, pd.DataFrame]:
+                           deep_copy: bool = True,
+                           only_adversarial: bool = False,
+                           use_adversarial: bool = True) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Defines logic for sampling
         @param train_df: Train dataframe which has separate target
         @param target: Input target for the train dataset
         @param test_df: Test dataframe - newly generated train dataframe should be close to it
         @param deep_copy: make copy of input files or not. If not input dataframes will be overridden
+        @param only_adversarial: only adversarial fitering to train dataframe will be performed
+        @param use_adversarial: perform or not adversarial filtering
         @return: Newly generated train dataframe and test data
         """
         generator = self.get_object_generator()
@@ -37,10 +41,14 @@ class SampleData(ABC):
             new_train, new_target, test_df = generator.preprocess_data(train_df.copy(), target.copy(), test_df)
         else:
             new_train, new_target, test_df = generator.preprocess_data(train_df, target, test_df)
-        new_train, new_target = generator.generate_data(new_train, new_target, test_df)
-        new_train, new_target = generator.postprocess_data(new_train, new_target, test_df)
-        new_train, new_target = generator.adversarial_filtering(new_train, new_target, test_df)
-        gc.collect()
+        if only_adversarial and use_adversarial:
+            return generator.adversarial_filtering(new_train, new_target, test_df)
+        else:
+            new_train, new_target = generator.generate_data(new_train, new_target, test_df)
+            new_train, new_target = generator.postprocess_data(new_train, new_target, test_df)
+            if use_adversarial:
+                new_train, new_target = generator.adversarial_filtering(new_train, new_target, test_df)
+            gc.collect()
         return new_train, new_target
 
 

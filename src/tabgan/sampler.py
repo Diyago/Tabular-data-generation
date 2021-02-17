@@ -22,8 +22,8 @@ __copyright__ = "Insaf Ashrapov"
 __license__ = "Apache 2.0"
 
 __all__ = [
-    "SamplerOriginal",
-    "SamplerGAN"
+    "OriginalGenerator",
+    "GANGenerator"
 ]
 
 
@@ -55,10 +55,8 @@ class SamplerOriginal(Sampler):
                 "n_estimators": 500,
                 "learning_rate": 0.02,
                 "random_state": 42,
-            }, pregeneration_frac=2):
-        """
-        :param gen_x_times: Factor for which initial dataframe should be increased
-        """
+            }, pregeneration_frac=2, epochs=500):
+
         self.gen_x_times = gen_x_times
         self.cat_cols = cat_cols
         self.is_post_process = is_post_process
@@ -66,59 +64,65 @@ class SamplerOriginal(Sampler):
         self.top_filter_quantile = top_filter_quantile
         self.adversarial_model_params = adversaial_model_params
         self.pregeneration_frac = pregeneration_frac
+        self.epochs = epochs
 
     def preprocess_data(self, train_df, target, test_df, ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        if "_temp_target" in train_df.columns:
-            raise ValueError("Input train dataframe already have _temp_target, condiser removing it")
+        if type(train_df) != pd.DataFrame or type(target) != pd.DataFrame or type(test_df) != pd.DataFrame:
+            raise ValueError("Input dataframes aren't pandas dataframes: train is {}; target is ; test is {}".
+                             format(type(train_df, type(target), type(type(test_df)))))
+        self.TEMP_TARGET = target.columns[0]
+        if self.TEMP_TARGET in train_df.columns:
+            raise ValueError("Input train dataframe already have {}, condiser removing it".format(self.TEMP_TARGET))
         if "test_similarity" in train_df.columns:
             raise ValueError("Input train dataframe already have test_similarity, condiser removing it")
-        # todo check data types np -> pd
 
         return train_df, target, test_df
 
     def generate_data(self, train_df, target, test_df) -> Tuple[pd.DataFrame, pd.DataFrame]:
         self._validate_data(train_df, target, test_df)
-        train_df["_temp_target"] = target
+        train_df[self.TEMP_TARGET] = target
         generated_df = train_df.sample(frac=(1 + self.pregeneration_frac * self.get_generated_shape(train_df)),
                                        replace=True, random_state=42)
         generated_df = generated_df.reset_index(drop=True)
-        return generated_df.drop("_temp_target", axis=1), generated_df["_temp_target"]
+        return generated_df.drop(self.TEMP_TARGET, axis=1), generated_df[self.TEMP_TARGET]
 
     def postprocess_data(self, train_df, target, test_df, ):
         if not self.is_post_process:
             return train_df, target
         self._validate_data(train_df, target, test_df)
-        train_df["_temp_target"] = target
+        train_df[self.TEMP_TARGET] = target
         for num_col in train_df.columns:
             if (self.cat_cols is None or num_col not in self.cat_cols) \
-                    and num_col != "_temp_target":
+                    and num_col != self.TEMP_TARGET:
                 min_val = test_df[num_col].quantile(self.bot_filter_quantile)
                 max_val = test_df[num_col].quantile(self.top_filter_quantile)
-                # todo add check if filtering is too heavy
-                train_df = train_df.loc[
-                    (train_df[num_col] >= min_val) & (train_df[num_col] <= max_val)
-                    ]
+                # to avoid to heavy filtering
+                filtered_df = train_df.loc[
+                    (train_df[num_col] >= min_val) & (train_df[num_col] <= max_val)]
+                if train_df.shape[0] * 0.8 < filtered_df.shape[0]:
+                    train_df = filtered_df
+
         if self.cat_cols is not None:
             for cat_col in self.cat_cols:
-                train_df = train_df[train_df[cat_col].isin(test_df[cat_col].unique())]
-        return train_df.drop("_temp_target", axis=1), train_df["_temp_target"]
+                # to avoid to heavy filtering
+                filtered_df = train_df[train_df[cat_col].isin(test_df[cat_col].unique())]
+                if train_df.shape[0] * 0.8 < filtered_df.shape[0]:
+                    train_df = filtered_df
+        return train_df.drop(self.TEMP_TARGET, axis=1), train_df[self.TEMP_TARGET]
 
     def adversarial_filtering(self, train_df, target, test_df, ):
-        # todo add more init params to AdversarialModel, think about kwargs
-        # todo param to give user choose use or not use adversarial_filtering
-
         ad_model = AdversarialModel(cat_cols=self.cat_cols,
                                     model_params=self.adversarial_model_params)
         self._validate_data(train_df, target, test_df)
-        train_df["_temp_target"] = target
-        ad_model.adversarial_test(test_df, train_df.drop("_temp_target", axis=1))
+        train_df[self.TEMP_TARGET] = target
+        ad_model.adversarial_test(test_df, train_df.drop(self.TEMP_TARGET, axis=1))
 
-        train_df["test_similarity"] = ad_model.trained_model.predict(train_df.drop("_temp_target", axis=1),
+        train_df["test_similarity"] = ad_model.trained_model.predict(train_df.drop(self.TEMP_TARGET, axis=1),
                                                                      return_shape=False)
         train_df.sort_values("test_similarity", ascending=False, inplace=True)
 
         train_df = train_df.head(self.get_generated_shape(train_df) * train_df.shape[0])
-        return train_df.drop(["test_similarity", "_temp_target"], axis=1), train_df["_temp_target"]
+        return train_df.drop(["test_similarity", self.TEMP_TARGET], axis=1), train_df[self.TEMP_TARGET]
 
     def _validate_data(self, train_df, target, test_df):
         if train_df.shape[0] < 10 or test_df.shape[0] < 10:
@@ -131,31 +135,9 @@ class SamplerOriginal(Sampler):
 
 
 class SamplerGAN(SamplerOriginal):
-    def __init__(self, gen_x_times, cat_cols=None, bot_filter_quantile=0.001,
-                 top_filter_quantile=0.999,
-                 is_post_process=True, adversaial_model_params={
-                "metrics": "AUC",
-                "max_depth": 2,
-                "max_bin": 100,
-                "n_estimators": 500,
-                "learning_rate": 0.02,
-                "random_state": 42,
-            }, epochs=500, pregeneration_frac=2):
-        """
-        :param gen_x_times: Factor for which initial dataframe should be increased
-        """
-        self.gen_x_times = gen_x_times
-        self.cat_cols = cat_cols
-        self.is_post_process = is_post_process
-        self.bot_filter_quantile = bot_filter_quantile
-        self.top_filter_quantile = top_filter_quantile
-        self.adversarial_model_params = adversaial_model_params
-        self.epochs = epochs
-        self.pregeneration_frac = pregeneration_frac
-
     def generate_data(self, train_df, target, test_df) -> Tuple[pd.DataFrame, pd.DataFrame]:
         self._validate_data(train_df, target, test_df)
-        train_df["_temp_target"] = target
+        train_df[self.TEMP_TARGET] = target
         ctgan = _CTGANSynthesizer()
         if self.cat_cols is None:
             ctgan.fit(train_df, [], epochs=self.epochs)
@@ -169,11 +151,10 @@ class SamplerGAN(SamplerOriginal):
             ].astype(data_dtype[i])
 
         train_df = pd.concat([train_df, generated_df, ]).reset_index(drop=True)
-        return train_df.drop("_temp_target", axis=1), train_df["_temp_target"]
+        return train_df.drop(self.TEMP_TARGET, axis=1), train_df[self.TEMP_TARGET]
 
 
 def _sampler(creator: SampleData, in_train, in_target, in_test) -> None:
-    # todo think about how user will be using library
     _logger = logging.getLogger(__name__)
     _logger.info("Starting generating data:")
     _logger.info(creator.generate_data_pipe(in_train, in_target, in_test))
