@@ -18,13 +18,15 @@ class AdversarialModel:
             model_params=None,
     ):
         '''
-        Class for fit predicting tabular models, mostly - boostings. Several encoders for categorical features are supported
+        Class for fit predicting tabular models, mostly - boostings. Several encoders for categorical features are
+        supported
 
         Args:
             cat_validation: categorical type of validation, examples: "None", "Single" and "Double"
             encoders_names: different categorical encoders from category_encoders library, example CatBoostEncoder
             cat_cols: list of categorical columns
-            model_validation: model training cross validation type from sklearn.model_selection, example StratifiedKFold(5)
+            model_validation: model training cross validation type from sklearn.model_selection,
+            example StratifiedKFold(5)
             model_params: model training hyperparameters
         '''
         self.cat_validation = cat_validation
@@ -177,27 +179,31 @@ class Model:
 
         return mean_score_train, mean_score_val, avg_num_trees
 
-    def predict(self, X: pd.DataFrame, return_shape=True) -> np.array:
+    def predict(self, X: pd.DataFrame) -> np.array:
         """
         Making inference with trained models for input dataframe
         Args:
             X: input dataframe for inference
-            return_shape: boolean return shape if True
 
-        Returns: Predicted ranks and number of input features if return_shape is True
+        Returns: Predicted ranks
 
         """
         y_hat = np.zeros(X.shape[0])
-        for encoder, model in zip(self.encoders_list, self.models_list):
-            X_test = X.copy()
-            X_test = encoder.transform(X_test)
+        if self.encoders_list is not None and self.encoders_list != []:
+            for encoder, model in zip(self.encoders_list, self.models_list):
+                X_test = X.copy()
+                X_test = encoder.transform(X_test)
 
-            # check for OrdinalEncoder encoding
-            for col in [col for col in X_test.columns if "OrdinalEncoder" in col]:
-                X_test[col] = X_test[col].astype("category")
+                # check for OrdinalEncoder encoding
+                for col in [col for col in X_test.columns if "OrdinalEncoder" in col]:
+                    X_test[col] = X_test[col].astype("category")
 
-            unranked_preds = model.predict_proba(X_test)[:, 1]
-            y_hat += rankdata(unranked_preds)
-        if return_shape:
-            return y_hat, X_test.shape[1]
+                unranked_preds = model.predict_proba(X_test)[:, 1]
+                y_hat += rankdata(unranked_preds)
+        else:
+            for model in self.models_list:
+                X_test = X.copy()
+
+                unranked_preds = model.predict_proba(X_test)[:, 1]
+                y_hat += rankdata(unranked_preds)
         return y_hat

@@ -46,17 +46,30 @@ class GANGenerator(SampleData):
 
 
 class SamplerOriginal(Sampler):
-    def __init__(self, gen_x_times, cat_cols=None, bot_filter_quantile=0.001,
-                 top_filter_quantile=0.999,
-                 is_post_process=True, adversaial_model_params={
+    def __init__(self, gen_x_times: float = 1.1, cat_cols: list = None, bot_filter_quantile: float = 0.001,
+                 top_filter_quantile: float = 0.999,
+                 is_post_process: bool = True, adversaial_model_params: dict = {
                 "metrics": "AUC",
                 "max_depth": 2,
                 "max_bin": 100,
                 "n_estimators": 500,
                 "learning_rate": 0.02,
                 "random_state": 42,
-            }, pregeneration_frac=2, epochs=500):
+            }, pregeneration_frac: float = 2, epochs: int = 500):
+        """
 
+        @param gen_x_times: float = 1.1 - how much data to generate, output might be less because of postprocessing and
+        adversarial filtering
+        @param cat_cols: list = None - categorical columns
+        @param bot_filter_quantile: float = 0.001 - bottom quantile for postprocess filtering
+        @param top_filter_quantile: float = 0.999 - bottom quantile for postprocess filtering
+        @param is_post_process: bool = True - perform or not postfiltering, if false bot_filter_quantile
+         and top_filter_quantile ignored
+        @param adversaial_model_params: dict params for adversarial filtering model, default values for binary task
+        @param pregeneration_frac: float = 2 - for generataion step gen_x_times * pregeneration_frac amount of data
+        will generated. However in postprocessing (1 + gen_x_times) % of original data will be returned
+        @param epochs: int = 500 - for how many epochs train GAN samplers, ignored for OriginalGenerator
+        """
         self.gen_x_times = gen_x_times
         self.cat_cols = cat_cols
         self.is_post_process = is_post_process
@@ -108,7 +121,8 @@ class SamplerOriginal(Sampler):
                 filtered_df = train_df[train_df[cat_col].isin(test_df[cat_col].unique())]
                 if train_df.shape[0] * 0.8 < filtered_df.shape[0]:
                     train_df = filtered_df
-        return train_df.drop(self.TEMP_TARGET, axis=1), train_df[self.TEMP_TARGET]
+        return train_df.drop(self.TEMP_TARGET, axis=1).reset_index(drop=True), train_df[self.TEMP_TARGET].reset_index(
+            drop=True)
 
     def adversarial_filtering(self, train_df, target, test_df, ):
         ad_model = AdversarialModel(cat_cols=self.cat_cols,
@@ -117,12 +131,11 @@ class SamplerOriginal(Sampler):
         train_df[self.TEMP_TARGET] = target
         ad_model.adversarial_test(test_df, train_df.drop(self.TEMP_TARGET, axis=1))
 
-        train_df["test_similarity"] = ad_model.trained_model.predict(train_df.drop(self.TEMP_TARGET, axis=1),
-                                                                     return_shape=False)
+        train_df["test_similarity"] = ad_model.trained_model.predict(train_df.drop(self.TEMP_TARGET, axis=1))
         train_df.sort_values("test_similarity", ascending=False, inplace=True)
-
         train_df = train_df.head(self.get_generated_shape(train_df) * train_df.shape[0])
-        return train_df.drop(["test_similarity", self.TEMP_TARGET], axis=1), train_df[self.TEMP_TARGET]
+        return train_df.drop(["test_similarity", self.TEMP_TARGET], axis=1).reset_index(drop=True), \
+               train_df[self.TEMP_TARGET].reset_index(drop=True)
 
     def _validate_data(self, train_df, target, test_df):
         if train_df.shape[0] < 10 or test_df.shape[0] < 10:
