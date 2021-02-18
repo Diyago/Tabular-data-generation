@@ -4,6 +4,7 @@
 <img src="https://raw.githubusercontent.com/Diyago/GAN-for-tabular-data/e5a4d437655261755de962b9779c73203611d921/images/logo%20tabular%20gan.svg" height="15%" width="15%">
 We well know GANs for success in the realistic image generation. However, they can be applied in tabular data generation. We will review and examine some recent papers about tabular GANs in action.
 
+* Github project: ["GAN-for-tabular-data"](https://github.com/Diyago/GAN-for-tabular-data)
 * Arxiv article: ["Tabular GANs for uneven distribution"](https://arxiv.org/abs/2010.00638)
 * Medium post: [GANs for tabular data](https://towardsdatascience.com/review-of-gans-for-tabular-data-a30a2199342)
 
@@ -25,29 +26,29 @@ from tabgan.sampler import OriginalGenerator, GANGenerator
 import pandas as pd
 import numpy as np
 
-if __name__ == "__main__":
-    # random input data
-    train = pd.DataFrame(np.random.randint(-10, 150, size=(50, 4)), columns=list('ABCD'))
-    target = pd.DataFrame(np.random.randint(0, 2, size=(50, 1)), columns=list('Y'))
-    test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list('ABCD'))
+# random input data
+train = pd.DataFrame(np.random.randint(-10, 150, size=(50, 4)), columns=list('ABCD'))
+target = pd.DataFrame(np.random.randint(0, 2, size=(50, 1)), columns=list('Y'))
+test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list('ABCD'))
 
-    # generate data
-    new_train1, new_target1 = OriginalGenerator().generate_data_pipe(train, target, test, )
-    new_train1, new_target1 = GANGenerator().generate_data_pipe(train, target, test, )
-    
-    # example with all params defined
-    new_train3, new_target3 = GANGenerator(gen_x_times=1.1, cat_cols=None, bot_filter_quantile=0.001,
-                                           top_filter_quantile=0.999,
-                                           is_post_process=True,
-                                           adversaial_model_params={
-                                               "metrics": "AUC", "max_depth": 2,
-                                               "max_bin": 100, "n_estimators": 500,
-                                               "learning_rate": 0.02, "random_state": 42,
-                                           }, pregeneration_frac=2,
-                                           epochs=500).generate_data_pipe(train, target,
-                                                                          test, deep_copy=True,
-                                                                          only_adversarial=False,
-                                                                          use_adversarial=True)
+# generate data
+new_train1, new_target1 = OriginalGenerator().generate_data_pipe(train, target, test, )
+new_train1, new_target1 = GANGenerator().generate_data_pipe(train, target, test, )
+
+# example with all params defined
+new_train3, new_target3 = GANGenerator(gen_x_times=1.1, cat_cols=None, 
+                                       bot_filter_quantile=0.001,
+                                       top_filter_quantile=0.999,
+                                       is_post_process=True,
+                                       adversaial_model_params={
+                                           "metrics": "AUC", "max_depth": 2,
+                                           "max_bin": 100, "n_estimators": 500,
+                                           "learning_rate": 0.02, "random_state": 42,
+                                       }, pregeneration_frac=2,
+                                       epochs=500).generate_data_pipe(train, target,
+                                                                      test, deep_copy=True,
+                                                                      only_adversarial=False,
+                                                                      use_adversarial=True)
 ```
 
 Both samplers `OriginalGenerator` and `GANGenerator` have same input parameters:
