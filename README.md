@@ -17,7 +17,10 @@ To run experiment follow these steps:
 
 **Task formalization**
 
-Let say we have **T_train** and **T_test** (train and test set respectively). We need to train the model on **T_train** and make predictions on **T_test**. However, we will increase the train by generating new data by GAN, somehow similar to **T_test**, without using ground truth labels.
+Let say we have **T_train** and **T_test** (train and test set respectively). 
+We need to train the model on **T_train** and make predictions on **T_test**. 
+However, we will increase the train by generating new data by GAN, 
+somehow similar to **T_test**, without using ground truth labels.
 
 **Experiment design**
 
