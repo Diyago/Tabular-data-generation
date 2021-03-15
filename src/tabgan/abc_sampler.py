@@ -49,7 +49,7 @@ class SampleData(ABC):
             if use_adversarial:
                 new_train, new_target = generator.adversarial_filtering(new_train, new_target, test_df)
             gc.collect()
-        return new_train, new_target
+            return new_train, new_target
 
 
 class Sampler(ABC):
