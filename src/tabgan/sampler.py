@@ -80,8 +80,8 @@ class SamplerOriginal(Sampler):
         self.epochs = epochs
 
     def preprocess_data(self, train_df, target, test_df, ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        if isinstance(train_df, pd.DataFrame) == False or isinstance(target,pd.DataFrame) == False \
-                or isinstance(test_df, pd.DataFrame) == False:
+        if isinstance(train_df, pd.DataFrame) is False or isinstance(target,pd.DataFrame) is False \
+                or isinstance(test_df, pd.DataFrame) is False:
             raise ValueError("Input dataframes aren't pandas dataframes: train is {}; target is ; test is {}".
                              format(type(train_df, type(target), type(type(test_df)))))
         self.TEMP_TARGET = target.columns[0]
