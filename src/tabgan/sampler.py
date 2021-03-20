@@ -86,9 +86,9 @@ class SamplerOriginal(Sampler):
                              format(type(train_df), type(target), type(test_df)))
         self.TEMP_TARGET = target.columns[0]
         if self.TEMP_TARGET in train_df.columns:
-            raise ValueError("Input train dataframe already have {}, condiser removing it".format(self.TEMP_TARGET))
+            raise ValueError("Input train dataframe already have {} column, consider removing it".format(self.TEMP_TARGET))
         if "test_similarity" in train_df.columns:
-            raise ValueError("Input train dataframe already have test_similarity, condiser removing it")
+            raise ValueError("Input train dataframe already have test_similarity, consider removing it")
 
         return train_df, target, test_df
 

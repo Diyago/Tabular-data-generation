@@ -76,8 +76,6 @@ class TestSamplerOriginal(TestCase):
         args = [self.train.head(), self.target.copy(), self.test]
         self.assertRaises(ValueError, self.sampler._validate_data, *args)
 
-    #
-    #
     class TestSamplerGAN(TestCase):
         def setUp(self):
             self.train = pd.DataFrame(np.random.randint(-10, 150, size=(50, 4)), columns=list('ABCD'))

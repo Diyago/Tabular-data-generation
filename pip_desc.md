@@ -28,16 +28,16 @@ import pandas as pd
 import numpy as np
 
 # random input data
-train = pd.DataFrame(np.random.randint(-10, 150, size=(50, 4)), columns=list('ABCD'))
-target = pd.DataFrame(np.random.randint(0, 2, size=(50, 1)), columns=list('Y'))
-test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list('ABCD'))
+train = pd.DataFrame(np.random.randint(-10, 150, size=(50, 4)), columns=list("ABCD"))
+target = pd.DataFrame(np.random.randint(0, 2, size=(50, 1)), columns=list("Y"))
+test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list("ABCD"))
 
 # generate data
 new_train1, new_target1 = OriginalGenerator().generate_data_pipe(train, target, test, )
 new_train1, new_target1 = GANGenerator().generate_data_pipe(train, target, test, )
 
 # example with all params defined
-new_train3, new_target3 = GANGenerator(gen_x_times=1.1, cat_cols=None, 
+new_train3, new_target3 = GANGenerator(gen_x_times=1.1, cat_cols=None,
                                        bot_filter_quantile=0.001,
                                        top_filter_quantile=0.999,
                                        is_post_process=True,
@@ -62,8 +62,8 @@ adversarial filtering
 * **is_post_process**: bool = True - perform or not postfiltering, if false bot_filter_quantile
  and top_filter_quantile ignored
 * **adversaial_model_params**: dict params for adversarial filtering model, default values for binary task
-* **pregeneration_frac**: float = 2 - for generataion step gen_x_times * pregeneration_frac amount of data 
-will generated. However in postprocessing (1 + gen_x_times) % of original data will be returned 
+* **pregeneration_frac**: float = 2 - for generataion step gen_x_times * pregeneration_frac amount of data
+will generated. However in postprocessing (1 + gen_x_times) % of original data will be returned
 * **epochs**: int = 500 - for how many epochs train GAN samplers, ignored for OriginalGenerator
 
 
@@ -77,6 +77,27 @@ For `generate_data_pipe` methods params:
 * **use_adversarial**: bool = True - perform or not adversarial filtering
 * **@return**: -> Tuple[pd.DataFrame, pd.DataFrame] -  Newly generated train dataframe and test data
 
+Thus, you may use this library to improve your dataset quality:
+
+``` python
+def fit_predict(clf, X_train, y_train, X_test, y_test):
+    clf.fit(X_train, y_train)
+    return sklearn.metrics.roc_auc_score(y_test, clf.predict_proba(X_test)[:, 1])
+
+
+if __name__ == "__main__":
+    dataset = sklearn.datasets.load_breast_cancer()
+    clf = sklearn.ensemble.RandomForestClassifier(n_estimators=25, max_depth=6)
+    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(
+        pd.DataFrame(dataset.data), pd.DataFrame(dataset.target, columns=["target"]), test_size=0.33, random_state=42)
+    print("initial metric", fit_predict(clf, X_train, y_train, X_test, y_test))
+
+    new_train1, new_target1 = OriginalGenerator().generate_data_pipe(X_train, y_train, X_test, )
+    print("OriginalGenerator metric", fit_predict(clf, new_train1, new_target1, X_test, y_test))
+
+    new_train1, new_target1 = GANGenerator().generate_data_pipe(X_train, y_train, X_test, )
+    print("GANGenerator metric", fit_predict(clf, new_train1, new_target1, X_test, y_test))
+```
 
 ### Datasets and experiment design
 
