@@ -97,8 +97,7 @@ class SamplerOriginal(Sampler):
     def generate_data(self, train_df, target, test_df) -> Tuple[pd.DataFrame, pd.DataFrame]:
         self._validate_data(train_df, target, test_df)
         train_df[self.TEMP_TARGET] = target
-        generated_df = train_df.sample(frac=(1 + self.pregeneration_frac * self.get_generated_shape(train_df)),
-                                       replace=True, random_state=42)
+        generated_df = train_df.sample(frac=(1 + self.pregeneration_frac), replace=True, random_state=42)
         generated_df = generated_df.reset_index(drop=True)
         gc.collect()
         return generated_df.drop(self.TEMP_TARGET, axis=1), generated_df[self.TEMP_TARGET]
@@ -135,6 +134,7 @@ class SamplerOriginal(Sampler):
         train_df["test_similarity"] = ad_model.trained_model.predict(train_df.drop(self.TEMP_TARGET, axis=1))
         train_df.sort_values("test_similarity", ascending=False, inplace=True)
         train_df = train_df.head(self.get_generated_shape(train_df) * train_df.shape[0])
+        del ad_model
         gc.collect()
         return train_df.drop(["test_similarity", self.TEMP_TARGET], axis=1).reset_index(drop=True), \
                train_df[self.TEMP_TARGET].reset_index(drop=True)
