@@ -15,6 +15,9 @@
 
 4. Uploading project to test PIP:
 `twine upload --repository-url https://test.pypi.org/legacy/ dist/*`
+   
+5. Uploading project to prod PIP:
+`twine upload --repository-url https://upload.pypi.org/legacy/ dist/*`
 
 # Contributor Covenant Code of Conduct
 

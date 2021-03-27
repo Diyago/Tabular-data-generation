@@ -86,7 +86,8 @@ class SamplerOriginal(Sampler):
                              format(type(train_df), type(target), type(test_df)))
         self.TEMP_TARGET = target.columns[0]
         if self.TEMP_TARGET in train_df.columns:
-            raise ValueError("Input train dataframe already have {} column, consider removing it".format(self.TEMP_TARGET))
+            raise ValueError(
+                "Input train dataframe already have {} column, consider removing it".format(self.TEMP_TARGET))
         if "test_similarity" in train_df.columns:
             raise ValueError("Input train dataframe already have test_similarity, consider removing it")
 
@@ -110,18 +111,14 @@ class SamplerOriginal(Sampler):
                     and num_col != self.TEMP_TARGET:
                 min_val = test_df[num_col].quantile(self.bot_filter_quantile)
                 max_val = test_df[num_col].quantile(self.top_filter_quantile)
-                # to avoid to heavy filtering
-                filtered_df = train_df.loc[
-                    (train_df[num_col] >= min_val) & (train_df[num_col] <= max_val)]
-                if train_df.shape[0] * 0.8 < filtered_df.shape[0]:
-                    train_df = filtered_df
+
+                filtered_df = train_df.loc[(train_df[num_col] >= min_val) & (train_df[num_col] <= max_val)]
+                train_df = filtered_df
 
         if self.cat_cols is not None:
             for cat_col in self.cat_cols:
-                # to avoid to heavy filtering
                 filtered_df = train_df[train_df[cat_col].isin(test_df[cat_col].unique())]
-                if train_df.shape[0] * 0.8 < filtered_df.shape[0]:
-                    train_df = filtered_df
+                train_df = filtered_df
         return train_df.drop(self.TEMP_TARGET, axis=1).reset_index(drop=True), train_df[self.TEMP_TARGET].reset_index(
             drop=True)
 
