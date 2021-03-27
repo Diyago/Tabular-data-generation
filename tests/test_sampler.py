@@ -62,6 +62,7 @@ class TestSamplerOriginal(TestCase):
         new_train, new_target = self.sampler.postprocess_data(gen_train, gen_target, test_df)
         self.assertEqual(new_train.shape[0], new_target.shape[0])
         self.assertGreaterEqual(new_train.iloc[:, 0].min(), test_df.iloc[:, 0].min())
+        self.assertGreaterEqual(test_df.iloc[:, 0].max(), new_train.iloc[:, 0].max())
 
     def test_adversarial_filtering(self):
         new_train, new_target, test_df = self.sampler.preprocess_data(self.train.copy(),

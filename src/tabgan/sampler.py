@@ -3,6 +3,7 @@
 todo write description
 """
 
+import gc
 import logging
 import warnings
 from typing import Tuple
@@ -99,6 +100,7 @@ class SamplerOriginal(Sampler):
         generated_df = train_df.sample(frac=(1 + self.pregeneration_frac * self.get_generated_shape(train_df)),
                                        replace=True, random_state=42)
         generated_df = generated_df.reset_index(drop=True)
+        gc.collect()
         return generated_df.drop(self.TEMP_TARGET, axis=1), generated_df[self.TEMP_TARGET]
 
     def postprocess_data(self, train_df, target, test_df, ):
@@ -119,6 +121,7 @@ class SamplerOriginal(Sampler):
             for cat_col in self.cat_cols:
                 filtered_df = train_df[train_df[cat_col].isin(test_df[cat_col].unique())]
                 train_df = filtered_df
+        gc.collect()
         return train_df.drop(self.TEMP_TARGET, axis=1).reset_index(drop=True), train_df[self.TEMP_TARGET].reset_index(
             drop=True)
 
@@ -132,6 +135,7 @@ class SamplerOriginal(Sampler):
         train_df["test_similarity"] = ad_model.trained_model.predict(train_df.drop(self.TEMP_TARGET, axis=1))
         train_df.sort_values("test_similarity", ascending=False, inplace=True)
         train_df = train_df.head(self.get_generated_shape(train_df) * train_df.shape[0])
+        gc.collect()
         return train_df.drop(["test_similarity", self.TEMP_TARGET], axis=1).reset_index(drop=True), \
                train_df[self.TEMP_TARGET].reset_index(drop=True)
 
@@ -162,6 +166,7 @@ class SamplerGAN(SamplerOriginal):
             ].astype(data_dtype[i])
 
         train_df = pd.concat([train_df, generated_df, ]).reset_index(drop=True)
+        gc.collect()
         return train_df.drop(self.TEMP_TARGET, axis=1), train_df[self.TEMP_TARGET]
 
 
@@ -169,7 +174,7 @@ def _sampler(creator: SampleData, in_train, in_target, in_test) -> None:
     _logger = logging.getLogger(__name__)
     _logger.info("Starting generating data:")
     _logger.info(creator.generate_data_pipe(in_train, in_target, in_test))
-    _logger.info("Finished generatation\n")
+    _logger.info("Finished generation\n")
 
 
 if __name__ == "__main__":
