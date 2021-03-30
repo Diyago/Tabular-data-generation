@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
     # generate data
     new_train1, new_target1 = OriginalGenerator().generate_data_pipe(train, target, test, )
-    new_train1, new_target1 = GANGenerator().generate_data_pipe(train, target, test, )
+    new_train2, new_target2 = GANGenerator().generate_data_pipe(train, target, test, )
 
     # example with all params defined
     new_train3, new_target3 = GANGenerator(gen_x_times=1.1, cat_cols=None, bot_filter_quantile=0.001,
