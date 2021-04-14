@@ -21,29 +21,28 @@ from tabgan.sampler import OriginalGenerator, GANGenerator
 import pandas as pd
 import numpy as np
 
-if __name__ == "__main__":
-    # random input data
-    train = pd.DataFrame(np.random.randint(-10, 150, size=(50, 4)), columns=list("ABCD"))
-    target = pd.DataFrame(np.random.randint(0, 2, size=(50, 1)), columns=list("Y"))
-    test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list("ABCD"))
+# random input data
+train = pd.DataFrame(np.random.randint(-10, 150, size=(50, 4)), columns=list("ABCD"))
+target = pd.DataFrame(np.random.randint(0, 2, size=(50, 1)), columns=list("Y"))
+test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list("ABCD"))
 
-    # generate data
-    new_train1, new_target1 = OriginalGenerator().generate_data_pipe(train, target, test, )
-    new_train2, new_target2 = GANGenerator().generate_data_pipe(train, target, test, )
+# generate data
+new_train1, new_target1 = OriginalGenerator().generate_data_pipe(train, target, test, )
+new_train2, new_target2 = GANGenerator().generate_data_pipe(train, target, test, )
 
-    # example with all params defined
-    new_train3, new_target3 = GANGenerator(gen_x_times=1.1, cat_cols=None, bot_filter_quantile=0.001,
-                                           top_filter_quantile=0.999,
-                                           is_post_process=True,
-                                           adversaial_model_params={
-                                               "metrics": "AUC", "max_depth": 2,
-                                               "max_bin": 100, "n_estimators": 500,
-                                               "learning_rate": 0.02, "random_state": 42,
-                                           }, pregeneration_frac=2,
-                                           epochs=500).generate_data_pipe(train, target,
-                                                                          test, deep_copy=True,
-                                                                          only_adversarial=False,
-                                                                          use_adversarial=True)
+# example with all params defined
+new_train3, new_target3 = GANGenerator(gen_x_times=1.1, cat_cols=None, bot_filter_quantile=0.001,
+                                       top_filter_quantile=0.999,
+                                       is_post_process=True,
+                                       adversaial_model_params={
+                                           "metrics": "AUC", "max_depth": 2,
+                                           "max_bin": 100, "n_estimators": 500,
+                                           "learning_rate": 0.02, "random_state": 42,
+                                       }, pregeneration_frac=2,
+                                       epochs=500).generate_data_pipe(train, target,
+                                                                      test, deep_copy=True,
+                                                                      only_adversarial=False,
+                                                                      use_adversarial=True)
 ```
 
 Both samplers `OriginalGenerator` and `GANGenerator` have same input parameters:
@@ -78,18 +77,18 @@ def fit_predict(clf, X_train, y_train, X_test, y_test):
     return sklearn.metrics.roc_auc_score(y_test, clf.predict_proba(X_test)[:, 1])
 
 
-if __name__ == "__main__":
-    dataset = sklearn.datasets.load_breast_cancer()
-    clf = sklearn.ensemble.RandomForestClassifier(n_estimators=25, max_depth=6)
-    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(
-        pd.DataFrame(dataset.data), pd.DataFrame(dataset.target, columns=["target"]), test_size=0.33, random_state=42)
-    print("initial metric", fit_predict(clf, X_train, y_train, X_test, y_test))
 
-    new_train1, new_target1 = OriginalGenerator().generate_data_pipe(X_train, y_train, X_test, )
-    print("OriginalGenerator metric", fit_predict(clf, new_train1, new_target1, X_test, y_test))
+dataset = sklearn.datasets.load_breast_cancer()
+clf = sklearn.ensemble.RandomForestClassifier(n_estimators=25, max_depth=6)
+X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(
+    pd.DataFrame(dataset.data), pd.DataFrame(dataset.target, columns=["target"]), test_size=0.33, random_state=42)
+print("initial metric", fit_predict(clf, X_train, y_train, X_test, y_test))
 
-    new_train1, new_target1 = GANGenerator().generate_data_pipe(X_train, y_train, X_test, )
-    print("GANGenerator metric", fit_predict(clf, new_train1, new_target1, X_test, y_test))
+new_train1, new_target1 = OriginalGenerator().generate_data_pipe(X_train, y_train, X_test, )
+print("OriginalGenerator metric", fit_predict(clf, new_train1, new_target1, X_test, y_test))
+
+new_train1, new_target1 = GANGenerator().generate_data_pipe(X_train, y_train, X_test, )
+print("GANGenerator metric", fit_predict(clf, new_train1, new_target1, X_test, y_test))
 ```
 
 ### Datasets and experiment design
