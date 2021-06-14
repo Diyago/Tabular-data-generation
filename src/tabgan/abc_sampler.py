@@ -82,8 +82,8 @@ class Sampler(ABC):
         return int(self.gen_x_times * input_df.shape[0])
 
     @abstractmethod
-    def preprocess_data(self, train_df, target, test_df, ):
-        """Before we can start data generation we might need some preprosing, numpy to pandas
+    def preprocess_data(self, train, target, test_df, ):
+        """Before we can start data generation we might need some preprocessing, numpy to pandas
         and etc"""
         raise NotImplementedError
 
