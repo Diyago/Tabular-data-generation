@@ -1,7 +1,7 @@
 import gc
+import logging
 from abc import ABC, abstractmethod
 from typing import Tuple
-import logging
 
 import pandas as pd
 
@@ -27,7 +27,7 @@ class SampleData(ABC):
                            deep_copy: bool = True,
                            only_adversarial: bool = False,
                            use_adversarial: bool = True,
-                           only_generated_data=False) -> Tuple[pd.DataFrame, pd.DataFrame]:
+                           only_generated_data: bool = False) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Defines logic for sampling
         @param train_df: Train dataframe which has separate target

@@ -45,7 +45,7 @@ new_train3, new_target3 = GANGenerator(gen_x_times=1.1, cat_cols=None,
                                            "metrics": "AUC", "max_depth": 2,
                                            "max_bin": 100, "n_estimators": 500,
                                            "learning_rate": 0.02, "random_state": 42,
-                                       }, pregeneration_frac=2,
+                                       }, pregeneration_frac=2, only_generated_data=False,
                                        epochs=500).generate_data_pipe(train, target,
                                                                       test, deep_copy=True,
                                                                       only_adversarial=False,
@@ -75,6 +75,9 @@ For `generate_data_pipe` methods params:
 * **deep_copy**: bool = True - make copy of input files or not. If not input dataframes will be overridden
 * **only_adversarial**: bool = False - only adversarial fitering to train dataframe will be performed
 * **use_adversarial**: bool = True - perform or not adversarial filtering
+* **only_generated_data**: bool = False  - After generation get only newly generated, without 
+  concating input train dataframe.  
+
 * **@return**: -> Tuple[pd.DataFrame, pd.DataFrame] -  Newly generated train dataframe and test data
 
 Thus, you may use this library to improve your dataset quality:
