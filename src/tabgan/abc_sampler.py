@@ -1,6 +1,7 @@
 import gc
 from abc import ABC, abstractmethod
 from typing import Tuple
+import logging
 
 import pandas as pd
 
@@ -25,7 +26,8 @@ class SampleData(ABC):
     def generate_data_pipe(self, train_df: pd.DataFrame, target: pd.DataFrame, test_df: pd.DataFrame,
                            deep_copy: bool = True,
                            only_adversarial: bool = False,
-                           use_adversarial: bool = True) -> Tuple[pd.DataFrame, pd.DataFrame]:
+                           use_adversarial: bool = True,
+                           only_generated_data=False) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Defines logic for sampling
         @param train_df: Train dataframe which has separate target
@@ -34,19 +36,27 @@ class SampleData(ABC):
         @param deep_copy: make copy of input files or not. If not input dataframes will be overridden
         @param only_adversarial: only adversarial fitering to train dataframe will be performed
         @param use_adversarial: perform or not adversarial filtering
+        @param only_generated_data: After generation get only newly generated, without concating input train dataframe.
+        Only works for SamplerGAN.
         @return: Newly generated train dataframe and test data
         """
         generator = self.get_object_generator()
         if deep_copy:
+            logging.info("Preprocessing input data with deep copying input data.")
             new_train, new_target, test_df = generator.preprocess_data(train_df.copy(), target.copy(), test_df)
         else:
+            logging.info("Preprocessing input data with deep copying input data.")
             new_train, new_target, test_df = generator.preprocess_data(train_df, target, test_df)
         if only_adversarial and use_adversarial:
+            logging.info("Applying adversarial filtering")
             return generator.adversarial_filtering(new_train, new_target, test_df)
         else:
-            new_train, new_target = generator.generate_data(new_train, new_target, test_df)
+            logging.info("Starting generation step.")
+            new_train, new_target = generator.generate_data(new_train, new_target, test_df, only_generated_data)
+            logging.info("Starting postprocessing step.")
             new_train, new_target = generator.postprocess_data(new_train, new_target, test_df)
             if use_adversarial:
+                logging.info("Applying adversarial filtering")
                 new_train, new_target = generator.adversarial_filtering(new_train, new_target, test_df)
             gc.collect()
             return new_train, new_target
@@ -59,7 +69,7 @@ class Sampler(ABC):
 
     def get_generated_shape(self, input_df):
         """
-        Calcs final output shape
+        Calculates final output shape
         """
         if self.gen_x_times <= 0:
             raise ValueError("Passed gen_x_times = {} should be bigger than 0".format(self.gen_x_times))

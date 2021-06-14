@@ -67,7 +67,7 @@ class SamplerOriginal(Sampler):
         @param is_post_process: bool = True - perform or not postfiltering, if false bot_filter_quantile
          and top_filter_quantile ignored
         @param adversaial_model_params: dict params for adversarial filtering model, default values for binary task
-        @param pregeneration_frac: float = 2 - for generataion step gen_x_times * pregeneration_frac amount of data
+        @param pregeneration_frac: float = 2 - for generation step gen_x_times * pregeneration_frac amount of data
         will generated. However in postprocessing (1 + gen_x_times) % of original data will be returned
         @param epochs: int = 500 - for how many epochs train GAN samplers, ignored for OriginalGenerator
         """
@@ -94,7 +94,10 @@ class SamplerOriginal(Sampler):
 
         return train_df, target, test_df
 
-    def generate_data(self, train_df, target, test_df) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def generate_data(self, train_df, target, test_df, only_generated_data) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        if only_generated_data:
+            Warning.warn("For SamplerOriginal setting only_generated_data doesnt change anything, "
+                         "because generated data sampled from the train!")
         self._validate_data(train_df, target, test_df)
         train_df[self.TEMP_TARGET] = target
         generated_df = train_df.sample(frac=(1 + self.pregeneration_frac), replace=True, random_state=42)
@@ -139,7 +142,8 @@ class SamplerOriginal(Sampler):
         return train_df.drop(["test_similarity", self.TEMP_TARGET], axis=1).reset_index(drop=True), \
                train_df[self.TEMP_TARGET].reset_index(drop=True)
 
-    def _validate_data(self, train_df, target, test_df):
+    @staticmethod
+    def _validate_data(train_df, target, test_df):
         if train_df.shape[0] < 10 or test_df.shape[0] < 10:
             raise ValueError("Shape of train is {} and test is {} should at least 10! "
                              "Consider disabling adversarial training".
@@ -150,22 +154,24 @@ class SamplerOriginal(Sampler):
 
 
 class SamplerGAN(SamplerOriginal):
-    def generate_data(self, train_df, target, test_df) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def generate_data(self, train_df, target, test_df, only_generated_data:bool) -> Tuple[pd.DataFrame, pd.DataFrame]:
         self._validate_data(train_df, target, test_df)
         train_df[self.TEMP_TARGET] = target
         ctgan = _CTGANSynthesizer()
+        logging.info('training GAN')
         if self.cat_cols is None:
             ctgan.fit(train_df, [], epochs=self.epochs)
         else:
             ctgan.fit(train_df, self.cat_cols, epochs=self.epochs)
+        logging.info("Finished training GAN")
         generated_df = ctgan.sample(self.pregeneration_frac * self.get_generated_shape(train_df))
         data_dtype = train_df.dtypes.values
 
         for i in range(len(generated_df.columns)):
             generated_df[generated_df.columns[i]] = generated_df[generated_df.columns[i]
             ].astype(data_dtype[i])
-
-        train_df = pd.concat([train_df, generated_df, ]).reset_index(drop=True)
+        if not only_generated_data:
+            train_df = pd.concat([train_df, generated_df, ]).reset_index(drop=True)
         gc.collect()
         return train_df.drop(self.TEMP_TARGET, axis=1), train_df[self.TEMP_TARGET]
 
