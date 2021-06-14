@@ -43,7 +43,11 @@ class SampleData(ABC):
         generator = self.get_object_generator()
         if deep_copy:
             logging.info("Preprocessing input data with deep copying input data.")
-            new_train, new_target, test_df = generator.preprocess_data(train_df.copy(), target.copy(), test_df)
+            if target is None or test_df is None:
+                new_train = generator.preprocess_data_df(train_df.copy())
+                new_target = None
+            else:
+                new_train, new_target, test_df = generator.preprocess_data(train_df.copy(), target.copy(), test_df)
         else:
             logging.info("Preprocessing input data with deep copying input data.")
             new_train, new_target, test_df = generator.preprocess_data(train_df, target, test_df)
@@ -59,6 +63,8 @@ class SampleData(ABC):
                 logging.info("Applying adversarial filtering")
                 new_train, new_target = generator.adversarial_filtering(new_train, new_target, test_df)
             gc.collect()
+
+            logging.info("Total finishing, returning data")
             return new_train, new_target
 
 

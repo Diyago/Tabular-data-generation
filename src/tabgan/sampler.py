@@ -88,11 +88,14 @@ class SamplerOriginal(Sampler):
         self.pregeneration_frac = pregeneration_frac
         self.epochs = epochs
         self.only_generated_data = only_generated_data
+        self.TEMP_TARGET = 'TEMP_TARGET'
 
     def preprocess_data_df(self, df) -> pd.DataFrame:
         logging.info("Input shape: {}".format(df.shape))
         if isinstance(df, pd.DataFrame) is False:
-            raise ValueError("Input dataframe aren't pandas dataframes: df is {}".format(type(df)))
+            raise ValueError(
+                "Input dataframe aren't pandas dataframes: df is {}".format(type(df))
+            )
         return df
 
     def preprocess_data(
@@ -115,27 +118,43 @@ class SamplerOriginal(Sampler):
 
         return train_df, target, test_df
 
-    def generate_data(self, train_df, target, test_df, only_generated_data) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def generate_data(
+            self, train_df, target, test_df, only_generated_data
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         if only_generated_data:
-            Warning.warn("For SamplerOriginal setting only_generated_data doesnt change anything, "
-                         "because generated data sampled from the train!")
+            Warning.warn(
+                "For SamplerOriginal setting only_generated_data doesnt change anything, "
+                "because generated data sampled from the train!"
+            )
         self._validate_data(train_df, target, test_df)
         train_df[self.TEMP_TARGET] = target
-        generated_df = train_df.sample(frac=(1 + self.pregeneration_frac), replace=True, random_state=42)
+        generated_df = train_df.sample(
+            frac=(1 + self.pregeneration_frac), replace=True, random_state=42
+        )
         generated_df = generated_df.reset_index(drop=True)
         gc.collect()
-        logging.info("Generated shape: {} and {}".format(generated_df.drop(self.TEMP_TARGET, axis=1).shape,
-                                                         generated_df[self.TEMP_TARGET].shape))
-        return generated_df.drop(self.TEMP_TARGET, axis=1), generated_df[self.TEMP_TARGET]
+        logging.info(
+            "Generated shape: {} and {}".format(
+                generated_df.drop(self.TEMP_TARGET, axis=1).shape,
+                generated_df[self.TEMP_TARGET].shape,
+            )
+        )
+        return (
+            generated_df.drop(self.TEMP_TARGET, axis=1),
+            generated_df[self.TEMP_TARGET],
+        )
 
-    def postprocess_data(self, train_df, target, test_df, ):
-        if not self.is_post_process:
+    def postprocess_data(self, train_df, target, test_df):
+        if not self.is_post_process or test_df is None:
+            logging.info("Skipping postprocessing")
             return train_df, target
+
         self._validate_data(train_df, target, test_df)
         train_df[self.TEMP_TARGET] = target
         for num_col in train_df.columns:
-            if (self.cat_cols is None or num_col not in self.cat_cols) \
-                    and num_col != self.TEMP_TARGET:
+            if (
+                    self.cat_cols is None or num_col not in self.cat_cols
+            ) and num_col != self.TEMP_TARGET:
                 min_val = test_df[num_col].quantile(self.bot_filter_quantile)
                 max_val = test_df[num_col].quantile(self.top_filter_quantile)
 
@@ -146,39 +165,62 @@ class SamplerOriginal(Sampler):
 
         if self.cat_cols is not None:
             for cat_col in self.cat_cols:
-                filtered_df = train_df[train_df[cat_col].isin(test_df[cat_col].unique())]
+                filtered_df = train_df[
+                    train_df[cat_col].isin(test_df[cat_col].unique())
+                ]
                 train_df = filtered_df
         gc.collect()
         logging.info(
-            "Generated shapes after postprocessing: {} plus target".format(train_df.drop(self.TEMP_TARGET, axis=1).shape
-                                                                           ))
-        return train_df.drop(self.TEMP_TARGET, axis=1).reset_index(drop=True), train_df[self.TEMP_TARGET].reset_index(
-            drop=True)
+            "Generated shapes after postprocessing: {} plus target".format(
+                train_df.drop(self.TEMP_TARGET, axis=1).shape
+            )
+        )
+        return (
+            train_df.drop(self.TEMP_TARGET, axis=1).reset_index(drop=True),
+            train_df[self.TEMP_TARGET].reset_index(drop=True),
+        )
 
-    def adversarial_filtering(self, train_df, target, test_df, ):
-        ad_model = AdversarialModel(cat_cols=self.cat_cols,
-                                    model_params=self.adversarial_model_params)
+    def adversarial_filtering(self, train_df, target, test_df):
+        if test_df is None:
+            return train_df, target
+        ad_model = AdversarialModel(
+            cat_cols=self.cat_cols, model_params=self.adversarial_model_params
+        )
         self._validate_data(train_df, target, test_df)
         train_df[self.TEMP_TARGET] = target
         ad_model.adversarial_test(test_df, train_df.drop(self.TEMP_TARGET, axis=1))
 
-        train_df["test_similarity"] = ad_model.trained_model.predict(train_df.drop(self.TEMP_TARGET, axis=1))
+        train_df["test_similarity"] = ad_model.trained_model.predict(
+            train_df.drop(self.TEMP_TARGET, axis=1)
+        )
         train_df.sort_values("test_similarity", ascending=False, inplace=True)
         train_df = train_df.head(self.get_generated_shape(train_df) * train_df.shape[0])
         del ad_model
         gc.collect()
-        return train_df.drop(["test_similarity", self.TEMP_TARGET], axis=1).reset_index(drop=True), \
-               train_df[self.TEMP_TARGET].reset_index(drop=True)
+        return (
+            train_df.drop(["test_similarity", self.TEMP_TARGET], axis=1).reset_index(
+                drop=True
+            ),
+            train_df[self.TEMP_TARGET].reset_index(drop=True),
+        )
 
     @staticmethod
     def _validate_data(train_df, target, test_df):
-        if train_df.shape[0] < 10 or test_df.shape[0] < 10:
-            raise ValueError("Shape of train is {} and test is {} should at least 10! "
-                             "Consider disabling adversarial filtering".
-                             format(train_df.shape[0], test_df.shape[0]))
-        if train_df.shape[0] != target.shape[0]:
-            raise ValueError("Something gone wrong: shape of train_df = {} is not equal to target = {} shape"
-                             .format(train_df.shape[0], target.shape[0]))
+        if test_df is not None:
+            if train_df.shape[0] < 10 or test_df.shape[0] < 10:
+                raise ValueError(
+                    "Shape of train is {} and test is {} should at least 10! "
+                    "Consider disabling adversarial filtering".format(
+                        train_df.shape[0], test_df.shape[0]
+                    )
+                )
+        if target is not None:
+            if train_df.shape[0] != target.shape[0]:
+                raise ValueError(
+                    "Something gone wrong: shape of train_df = {} is not equal to target = {} shape".format(
+                        train_df.shape[0], target.shape[0]
+                    )
+                )
 
 
 class SamplerGAN(SamplerOriginal):
@@ -186,7 +228,8 @@ class SamplerGAN(SamplerOriginal):
             self, train_df, target, test_df, only_generated_data: bool
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         self._validate_data(train_df, target, test_df)
-        train_df[self.TEMP_TARGET] = target
+        if target is not None:
+            train_df[self.TEMP_TARGET] = target
         ctgan = _CTGANSynthesizer()
         logging.info("training GAN")
         if self.cat_cols is None:
@@ -206,14 +249,25 @@ class SamplerGAN(SamplerOriginal):
         gc.collect()
         if not only_generated_data:
             train_df = pd.concat([train_df, generated_df]).reset_index(drop=True)
-            logging.info("Generated shapes: {} plus target".format(train_df.drop(self.TEMP_TARGET, axis=1).shape))
-            return train_df.drop(self.TEMP_TARGET, axis=1), train_df[self.TEMP_TARGET]
+            logging.info(
+                "Generated shapes: {} plus target".format(
+                    _drop_col_if_exist(train_df, self.TEMP_TARGET).shape
+                )
+            )
+            return _drop_col_if_exist(train_df, self.TEMP_TARGET), get_columns_if_exists(train_df, self.TEMP_TARGET)
         else:
-            logging.info("Generated shapes: {} plus target".format(generated_df.drop(self.TEMP_TARGET, axis=1).shape))
-            return generated_df.drop(self.TEMP_TARGET, axis=1), generated_df[self.TEMP_TARGET]
+            logging.info(
+                "Generated shapes: {} plus target".format(
+                    _drop_col_if_exist(train_df, self.TEMP_TARGET).shape
+                )
+            )
+            return (
+                _drop_col_if_exist(train_df, self.TEMP_TARGET),
+                get_columns_if_exists(train_df, self.TEMP_TARGET),
+            )
         gc.collect()
 
-        return train_df.drop(self.TEMP_TARGET, axis=1), train_df[self.TEMP_TARGET]
+        return _drop_col_if_exist(train_df, self.TEMP_TARGET), get_columns_if_exists(train_df, self.TEMP_TARGET)
 
 
 def _sampler(creator: SampleData, in_train, in_target, in_test) -> None:
@@ -222,6 +276,22 @@ def _sampler(creator: SampleData, in_train, in_target, in_test) -> None:
     _logger.info(creator.generate_data_pipe(in_train, in_target, in_test))
     _logger.info("Finished generation\n")
 
+
+def _drop_col_if_exist(df, col_to_drop) -> pd.DataFrame:
+    """
+    Drops col_to_drop from input dataframe df if sucj column exists
+    """
+    if col_to_drop in df.columns:
+        return df.drop(col_to_drop, axis=1)
+    else:
+        return df
+
+
+def get_columns_if_exists(df, col) -> pd.DataFrame:
+    if col in df.columns:
+        return df[col]
+    else:
+        return None
 
 if __name__ == "__main__":
     setup_logging(logging.DEBUG)
