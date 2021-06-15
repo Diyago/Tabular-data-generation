@@ -45,23 +45,23 @@ class GANGenerator(SampleData):
 
 class SamplerOriginal(Sampler):
     def __init__(
-        self,
-        gen_x_times: float = 1.1,
-        cat_cols: list = None,
-        bot_filter_quantile: float = 0.001,
-        top_filter_quantile: float = 0.999,
-        is_post_process: bool = True,
-        adversaial_model_params: dict = {
-            "metrics": "AUC",
-            "max_depth": 2,
-            "max_bin": 100,
-            "n_estimators": 500,
-            "learning_rate": 0.02,
-            "random_state": 42,
-        },
-        pregeneration_frac: float = 2,
-        epochs: int = 500,
-        only_generated_data: bool = False,
+            self,
+            gen_x_times: float = 1.1,
+            cat_cols: list = None,
+            bot_filter_quantile: float = 0.001,
+            top_filter_quantile: float = 0.999,
+            is_post_process: bool = True,
+            adversaial_model_params: dict = {
+                "metrics": "AUC",
+                "max_depth": 2,
+                "max_bin": 100,
+                "n_estimators": 500,
+                "learning_rate": 0.02,
+                "random_state": 42,
+            },
+            pregeneration_frac: float = 2,
+            epochs: int = 500,
+            only_generated_data: bool = False,
     ):
         """
 
@@ -76,7 +76,7 @@ class SamplerOriginal(Sampler):
         @param pregeneration_frac: float = 2 - for generation step gen_x_times * pregeneration_frac amount of data
         will generated. However in postprocessing (1 + gen_x_times) % of original data will be returned
         @param epochs: int = 500 - for how many epochs train GAN samplers, ignored for OriginalGenerator
-        @param only_generated_data: After generation get only newly generated, without concating input train dataframe.
+        @param only_generated_data: If True after generation get only newly generated, without concating input train dataframe.
         Only works for SamplerGAN.
         """
         self.gen_x_times = gen_x_times
@@ -99,7 +99,7 @@ class SamplerOriginal(Sampler):
         return df
 
     def preprocess_data(
-        self, train, target, test_df
+            self, train, target, test_df
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         train = self.preprocess_data_df(train)
         target = self.preprocess_data_df(target)
@@ -119,11 +119,11 @@ class SamplerOriginal(Sampler):
         return train, target, test_df
 
     def generate_data(
-        self, train_df, target, test_df, only_generated_data
+            self, train_df, target, test_df, only_generated_data
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         if only_generated_data:
             Warning.warn(
-                "For SamplerOriginal setting only_generated_data doesnt change anything, "
+                "For SamplerOriginal setting only_generated_data doesn't change anything, "
                 "because generated data sampled from the train!"
             )
         self._validate_data(train_df, target, test_df)
@@ -151,16 +151,16 @@ class SamplerOriginal(Sampler):
 
         self._validate_data(train_df, target, test_df)
         train_df[self.TEMP_TARGET] = target
-        for num_col in train_df.columns:
-            if (
-                self.cat_cols is None or num_col not in self.cat_cols
-            ) and num_col != self.TEMP_TARGET:
+
+        for num_col in test_df.columns:
+            if self.cat_cols is None or num_col not in self.cat_cols:
                 min_val = test_df[num_col].quantile(self.bot_filter_quantile)
                 max_val = test_df[num_col].quantile(self.top_filter_quantile)
-
-            filtered_df = train_df.loc[
-                (train_df[num_col] >= min_val) & (train_df[num_col] <= max_val)
-            ]
+            filtered_df = train_df.loc[(train_df[num_col] >= min_val) & (train_df[num_col] <= max_val)]
+            if filtered_df.shape[0] < 10:
+                raise ValueError("After post-processing generated data's shape less than 10. For columns {} test "
+                                 "might be highly skewed. Filter conditions are min_val = {} and max_val = {}.".format(
+                    num_col, min_val, max_val))
             train_df = filtered_df
 
         if self.cat_cols is not None:
@@ -181,8 +181,7 @@ class SamplerOriginal(Sampler):
         )
 
     def adversarial_filtering(self, train_df, target, test_df):
-        if test_df is None:
-            return train_df, target
+
         ad_model = AdversarialModel(
             cat_cols=self.cat_cols, model_params=self.adversarial_model_params
         )
@@ -209,7 +208,7 @@ class SamplerOriginal(Sampler):
         if test_df is not None:
             if train_df.shape[0] < 10 or test_df.shape[0] < 10:
                 raise ValueError(
-                    "Shape of train is {} and test is {} should at least 10! "
+                    "Shape of train is {} and test is {}. Both should at least 10! "
                     "Consider disabling adversarial filtering".format(
                         train_df.shape[0], test_df.shape[0]
                     )
@@ -225,7 +224,7 @@ class SamplerOriginal(Sampler):
 
 class SamplerGAN(SamplerOriginal):
     def generate_data(
-        self, train_df, target, test_df, only_generated_data: bool
+            self, train_df, target, test_df, only_generated_data: bool
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         self._validate_data(train_df, target, test_df)
         if target is not None:
@@ -265,8 +264,8 @@ class SamplerGAN(SamplerOriginal):
                 )
             )
             return (
-                _drop_col_if_exist(train_df, self.TEMP_TARGET),
-                get_columns_if_exists(train_df, self.TEMP_TARGET),
+                _drop_col_if_exist(generated_df, self.TEMP_TARGET),
+                get_columns_if_exists(generated_df, self.TEMP_TARGET),
             )
         gc.collect()
 
@@ -307,10 +306,9 @@ if __name__ == "__main__":
     )
     target = pd.DataFrame(np.random.randint(0, 2, size=(100, 1)), columns=list("Y"))
     test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list("ABCD"))
-    #
     _sampler(OriginalGenerator(gen_x_times=15), train, target, test)
     _sampler(
         GANGenerator(gen_x_times=10, only_generated_data=False), train, target, test
     )
     _sampler(OriginalGenerator(gen_x_times=15), train, None, None)
-    _sampler(GANGenerator(gen_x_times=10), train, None, None)
+    _sampler(GANGenerator(gen_x_times=20, only_generated_data=True), train, None, train)
