@@ -45,23 +45,23 @@ class GANGenerator(SampleData):
 
 class SamplerOriginal(Sampler):
     def __init__(
-            self,
-            gen_x_times: float = 1.1,
-            cat_cols: list = None,
-            bot_filter_quantile: float = 0.001,
-            top_filter_quantile: float = 0.999,
-            is_post_process: bool = True,
-            adversaial_model_params: dict = {
-                "metrics": "AUC",
-                "max_depth": 2,
-                "max_bin": 100,
-                "n_estimators": 500,
-                "learning_rate": 0.02,
-                "random_state": 42,
-            },
-            pregeneration_frac: float = 2,
-            epochs: int = 500,
-            only_generated_data: bool = False,
+        self,
+        gen_x_times: float = 1.1,
+        cat_cols: list = None,
+        bot_filter_quantile: float = 0.001,
+        top_filter_quantile: float = 0.999,
+        is_post_process: bool = True,
+        adversaial_model_params: dict = {
+            "metrics": "AUC",
+            "max_depth": 2,
+            "max_bin": 100,
+            "n_estimators": 500,
+            "learning_rate": 0.02,
+            "random_state": 42,
+        },
+        pregeneration_frac: float = 2,
+        epochs: int = 500,
+        only_generated_data: bool = False,
     ):
         """
 
@@ -99,7 +99,7 @@ class SamplerOriginal(Sampler):
         return df
 
     def preprocess_data(
-            self, train, target, test_df
+        self, train, target, test_df
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         train = self.preprocess_data_df(train)
         target = self.preprocess_data_df(target)
@@ -119,7 +119,7 @@ class SamplerOriginal(Sampler):
         return train, target, test_df
 
     def generate_data(
-            self, train_df, target, test_df, only_generated_data
+        self, train_df, target, test_df, only_generated_data
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         if only_generated_data:
             Warning.warn(
@@ -156,11 +156,16 @@ class SamplerOriginal(Sampler):
             if self.cat_cols is None or num_col not in self.cat_cols:
                 min_val = test_df[num_col].quantile(self.bot_filter_quantile)
                 max_val = test_df[num_col].quantile(self.top_filter_quantile)
-            filtered_df = train_df.loc[(train_df[num_col] >= min_val) & (train_df[num_col] <= max_val)]
+            filtered_df = train_df.loc[
+                (train_df[num_col] >= min_val) & (train_df[num_col] <= max_val)
+            ]
             if filtered_df.shape[0] < 10:
-                raise ValueError("After post-processing generated data's shape less than 10. For columns {} test "
-                                 "might be highly skewed. Filter conditions are min_val = {} and max_val = {}.".format(
-                    num_col, min_val, max_val))
+                raise ValueError(
+                    "After post-processing generated data's shape less than 10. For columns {} test "
+                    "might be highly skewed. Filter conditions are min_val = {} and max_val = {}.".format(
+                        num_col, min_val, max_val
+                    )
+                )
             train_df = filtered_df
 
         if self.cat_cols is not None:
@@ -181,7 +186,9 @@ class SamplerOriginal(Sampler):
         )
 
     def adversarial_filtering(self, train_df, target, test_df):
-
+        if test_df is None:
+            logging.info("Skipping adversarial filtering, because test_df is None.")
+            return train_df, target
         ad_model = AdversarialModel(
             cat_cols=self.cat_cols, model_params=self.adversarial_model_params
         )
@@ -224,7 +231,7 @@ class SamplerOriginal(Sampler):
 
 class SamplerGAN(SamplerOriginal):
     def generate_data(
-            self, train_df, target, test_df, only_generated_data: bool
+        self, train_df, target, test_df, only_generated_data: bool
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         self._validate_data(train_df, target, test_df)
         if target is not None:
