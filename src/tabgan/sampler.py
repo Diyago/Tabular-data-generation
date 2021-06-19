@@ -153,6 +153,7 @@ class SamplerOriginal(Sampler):
         train_df[self.TEMP_TARGET] = target
 
         for num_col in test_df.columns:
+            min_val, max_val = None, None
             if self.cat_cols is None or num_col not in self.cat_cols:
                 min_val = test_df[num_col].quantile(self.bot_filter_quantile)
                 max_val = test_df[num_col].quantile(self.top_filter_quantile)

@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from torch import optim
 from torch.nn import functional
+from tqdm.autonotebook import tqdm
 
 from _ctgan.conditional import ConditionalGenerator
 from _ctgan.models import Discriminator, Generator
@@ -189,7 +190,8 @@ class _CTGANSynthesizer(object):
         early_stopping = EarlyStopping(patience=self.patience, verbose=False)
 
         steps_per_epoch = max(len(train_data) // self.batch_size, 1)
-        for i in range(epochs):
+
+        for i in tqdm(range(epochs), desc='CTGAN epochs'):
             for id_ in range(steps_per_epoch):
                 fakez = torch.normal(mean=mean, std=std)
 
