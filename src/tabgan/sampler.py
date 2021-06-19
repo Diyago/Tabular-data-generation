@@ -153,26 +153,31 @@ class SamplerOriginal(Sampler):
         train_df[self.TEMP_TARGET] = target
 
         for num_col in test_df.columns:
-            min_val, max_val = None, None
             if self.cat_cols is None or num_col not in self.cat_cols:
                 min_val = test_df[num_col].quantile(self.bot_filter_quantile)
                 max_val = test_df[num_col].quantile(self.top_filter_quantile)
                 filtered_df = train_df.loc[
-                (train_df[num_col] >= min_val) & (train_df[num_col] <= max_val)]
-            if filtered_df.shape[0] < 10:
-                raise ValueError(
-                    "After post-processing generated data's shape less than 10. For columns {} test "
-                    "might be highly skewed. Filter conditions are min_val = {} and max_val = {}.".format(
-                        num_col, min_val, max_val
+                    (train_df[num_col] >= min_val) & (train_df[num_col] <= max_val)
+                ]
+                if filtered_df.shape[0] < 10:
+                    raise ValueError(
+                        "After post-processing generated data's shape less than 10. For columns {} test "
+                        "might be highly skewed. Filter conditions are min_val = {} and max_val = {}.".format(
+                            num_col, min_val, max_val
+                        )
                     )
-                )
-            train_df = filtered_df
+                train_df = filtered_df
 
         if self.cat_cols is not None:
             for cat_col in self.cat_cols:
                 filtered_df = train_df[
                     train_df[cat_col].isin(test_df[cat_col].unique())
                 ]
+                if filtered_df.shape[0] < 10:
+                    raise ValueError(
+                        "After post-processing generated data's shape less than 10. For columns {} test "
+                        "might be highly skewed.".format(num_col)
+                    )
                 train_df = filtered_df
         gc.collect()
         logging.info(
