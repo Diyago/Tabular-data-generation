@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import torch
 from torch import optim
@@ -191,7 +193,7 @@ class _CTGANSynthesizer(object):
 
         steps_per_epoch = max(len(train_data) // self.batch_size, 1)
 
-        for i in tqdm(range(epochs), desc='CTGAN epochs'):
+        for i in tqdm(range(epochs), desc='Training CTGAN, epochs:'):
             for id_ in range(steps_per_epoch):
                 fakez = torch.normal(mean=mean, std=std)
 
@@ -264,6 +266,7 @@ class _CTGANSynthesizer(object):
                 optimizerG.step()
             early_stopping(np.average(train_losses))
             if early_stopping.early_stop:
+                logging.info("Early stopping in GAN training!")
                 break
             train_losses = []
 

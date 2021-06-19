@@ -316,11 +316,18 @@ if __name__ == "__main__":
     train = pd.DataFrame(
         np.random.randint(-10, 150, size=(100, 4)), columns=list("ABCD")
     )
+    logging.info(train)
     target = pd.DataFrame(np.random.randint(0, 2, size=(100, 1)), columns=list("Y"))
     test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list("ABCD"))
     _sampler(OriginalGenerator(gen_x_times=15), train, target, test)
     _sampler(
         GANGenerator(gen_x_times=10, only_generated_data=False), train, target, test
     )
-    _sampler(OriginalGenerator(gen_x_times=15), train, None, None)
-    _sampler(GANGenerator(gen_x_times=20, only_generated_data=True), train, None, train)
+
+    _sampler(OriginalGenerator(gen_x_times=15), train, None, train)
+    _sampler(
+        GANGenerator(cat_cols=["A"], gen_x_times=20, only_generated_data=True),
+        train,
+        None,
+        train,
+    )

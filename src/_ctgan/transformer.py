@@ -4,6 +4,7 @@ from sklearn.exceptions import ConvergenceWarning
 from sklearn.mixture import BayesianGaussianMixture
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.utils._testing import ignore_warnings
+from tqdm.autonotebook import tqdm
 
 
 class DataTransformer(object):
@@ -68,7 +69,7 @@ class DataTransformer(object):
             self.dataframe = True
 
         self.meta = []
-        for column in data.columns:
+        for column in tqdm(data.columns, desc='Fitting CTGAN transformers for each column'):
             column_data = data[[column]].values
             if column in discrete_columns:
                 meta = self._fit_discrete(column, column_data)
