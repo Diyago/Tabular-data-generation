@@ -52,7 +52,7 @@ Both samplers `OriginalGenerator` and `GANGenerator` have same input parameters:
 * **cat_cols**: list = None - categorical columns
 * **bot_filter_quantile**: float = 0.001 - bottom quantile for postprocess filtering
 * **top_filter_quantile**: float = 0.999 - bottom quantile for postprocess filtering
-* **is_post_process**: bool = True - perform or not postfiltering, if false bot_filter_quantile and top_filter_quantile
+* **is_post_process**: bool = True - perform or not post-filtering, if false bot_filter_quantile and top_filter_quantile
   ignored
 * **adversaial_model_params**: dict params for adversarial filtering model, default values for binary task
 * **pregeneration_frac**: float = 2 - for generataion step gen_x_times * pregeneration_frac amount of data will
