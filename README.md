@@ -190,6 +190,18 @@ The author would like to thank Open Data Science community [7] for many valuable
 growing field of machine and deep learning. Also, special big thanks to Sber [8] for allowing solving such tasks and
 providing computational resources.
 
+## Citation
+
+If you use **GAN-for-tabular-data** in a scientific publication, we would appreciate references to the following BibTex entry:
+```bibtex
+@misc{Diyago2020tabgan,
+    author       = {Ashrapov, Insaf},
+    title        = {GANs for tabular data},
+    howpublished = {\url{https://github.com/Diyago/GAN-for-tabular-data}},
+    year         = {2020}
+}
+```
+
 ## References
 
 [1] Jonathan Hui. GAN — What is Generative Adversarial Networks GAN? (2018), medium article
