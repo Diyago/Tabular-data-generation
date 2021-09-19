@@ -193,6 +193,18 @@ providing computational resources.
 ## Citation
 
 If you use **GAN-for-tabular-data** in a scientific publication, we would appreciate references to the following BibTex entry:
+arxiv publication:
+```bibtex
+@misc{ashrapov2020tabular,
+      title={Tabular GANs for uneven distribution}, 
+      author={Insaf Ashrapov},
+      year={2020},
+      eprint={2010.00638},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
+```
+library itself:
 ```bibtex
 @misc{Diyago2020tabgan,
     author       = {Ashrapov, Insaf},
