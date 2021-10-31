@@ -60,8 +60,8 @@ class SamplerOriginal(Sampler):
             "random_state": 42,
         },
         pregeneration_frac: float = 2,
-        epochs: int = 500,
         only_generated_data: bool = False,
+        gan_params: dict = {'batch_size': 500, 'patience': 25, "epochs" : 500,}
     ):
         """
 
@@ -75,8 +75,8 @@ class SamplerOriginal(Sampler):
         @param adversarial_model_params: dict params for adversarial filtering model, default values for binary task
         @param pregeneration_frac: float = 2 - for generation step gen_x_times * pregeneration_frac amount of data
         will generated. However in postprocessing (1 + gen_x_times) % of original data will be returned
-        @param epochs: int = 500 - for how many epochs train GAN samplers, ignored for OriginalGenerator
-        @param only_generated_data: If True after generation get only newly generated, without concating input train dataframe.
+        @param only_generated_data: bool = False If True after generation get only newly generated, without concating input train dataframe.
+        @param gan_params: dict params for GAN training
         Only works for SamplerGAN.
         """
         self.gen_x_times = gen_x_times
@@ -86,8 +86,8 @@ class SamplerOriginal(Sampler):
         self.top_filter_quantile = top_filter_quantile
         self.adversarial_model_params = adversaial_model_params
         self.pregeneration_frac = pregeneration_frac
-        self.epochs = epochs
         self.only_generated_data = only_generated_data
+        self.gan_params = gan_params
         self.TEMP_TARGET = "TEMP_TARGET"
 
     def preprocess_data_df(self, df) -> pd.DataFrame:
@@ -241,12 +241,12 @@ class SamplerGAN(SamplerOriginal):
         self._validate_data(train_df, target, test_df)
         if target is not None:
             train_df[self.TEMP_TARGET] = target
-        ctgan = CTGAN()
+        ctgan = CTGAN(batch_size=self.gan_params["batch_size"], patience=self.gan_params["patience"])
         logging.info("training GAN")
         if self.cat_cols is None:
-            ctgan.fit(train_df, [], epochs=self.epochs)
+            ctgan.fit(train_df, [], epochs=self.gan_params["epochs"])
         else:
-            ctgan.fit(train_df, self.cat_cols, epochs=self.epochs)
+            ctgan.fit(train_df, self.cat_cols, epochs=self.gan_params["epochs"])
         logging.info("Finished training GAN")
         generated_df = ctgan.sample(
             self.pregeneration_frac * self.get_generated_shape(train_df)
@@ -290,8 +290,10 @@ class SamplerGAN(SamplerOriginal):
 def _sampler(creator: SampleData, in_train, in_target, in_test) -> None:
     _logger = logging.getLogger(__name__)
     _logger.info("Starting generating data")
-    _logger.info(creator.generate_data_pipe(in_train, in_target, in_test))
+    train, test = creator.generate_data_pipe(in_train, in_target, in_test)
+    _logger.info(train, test)
     _logger.info("Finished generation\n")
+    return train, test
 
 
 def _drop_col_if_exist(df, col_to_drop) -> pd.DataFrame:
@@ -321,7 +323,8 @@ if __name__ == "__main__":
     test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list("ABCD"))
     _sampler(OriginalGenerator(gen_x_times=15), train, target, test)
     _sampler(
-        GANGenerator(gen_x_times=10, only_generated_data=False), train, target, test
+        GANGenerator(gen_x_times=10, only_generated_data=False,
+                     gan_params={"batch_size": 500, "patience": 25, "epochs" : 500,}), train, target, test
     )
 
     _sampler(OriginalGenerator(gen_x_times=15), train, None, train)

@@ -31,18 +31,14 @@ new_train1, new_target1 = OriginalGenerator().generate_data_pipe(train, target, 
 new_train2, new_target2 = GANGenerator().generate_data_pipe(train, target, test, )
 
 # example with all params defined
-new_train3, new_target3 = GANGenerator(gen_x_times=1.1, cat_cols=None, bot_filter_quantile=0.001,
-                                       top_filter_quantile=0.999,
-                                       is_post_process=True,
-                                       adversaial_model_params={
-                                           "metrics": "AUC", "max_depth": 2,
-                                           "max_bin": 100, "n_estimators": 500,
-                                           "learning_rate": 0.02, "random_state": 42,
-                                       }, pregeneration_frac=2, only_generated_data=False,
-                                       epochs=500).generate_data_pipe(train, target,
-                                                                      test, deep_copy=True,
-                                                                      only_adversarial=False,
-                                                                      use_adversarial=True)
+new_train3, new_target3 = GANGenerator(gen_x_times=1.1, cat_cols=None,
+           bot_filter_quantile=0.001, top_filter_quantile=0.999, is_post_process=True,
+           adversaial_model_params={
+               "metrics": "AUC", "max_depth": 2, "max_bin": 100, 
+               "learning_rate": 0.02, "random_state": 42, "n_estimators": 500,
+           }, pregeneration_frac=2, only_generated_data=False,
+           gan_params = {"batch_size": 500, "patience": 25, "epochs" : 500,}).generate_data_pipe(train, target,
+                                          test, deep_copy=True, only_adversarial=False, use_adversarial=True)
 ```
 
 Both samplers `OriginalGenerator` and `GANGenerator` have same input parameters:
@@ -57,7 +53,7 @@ Both samplers `OriginalGenerator` and `GANGenerator` have same input parameters:
 * **adversaial_model_params**: dict params for adversarial filtering model, default values for binary task
 * **pregeneration_frac**: float = 2 - for generataion step gen_x_times * pregeneration_frac amount of data will
   generated. However in postprocessing (1 + gen_x_times) % of original data will be returned
-* **epochs**: int = 500 - for how many epochs train GAN samplers, ignored for OriginalGenerator
+* **gan_params**: dict params for GAN training
 
 For `generate_data_pipe` methods params:
 

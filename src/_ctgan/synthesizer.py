@@ -20,13 +20,10 @@ class EarlyStopping:
         Args:
             patience (int): How long to wait after last time validation loss improved.
                             Default: 7
-            verbose (bool): If True, prints a message for each validation loss improvement.
-                            Default: False
             delta (float): Minimum change in the monitored quantity to qualify as an improvement.
                             Default: 0
         """
         self.patience = patience
-        self.verbose = verbose
         self.counter = 0
         self.best_score = None
         self.early_stop = False
@@ -41,8 +38,9 @@ class EarlyStopping:
             self.best_score = score
         elif score < self.best_score + self.delta:
             self.counter += 1
-            # print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
             if self.counter >= self.patience:
+                logging.info("Early stoping for GAN. Best score: {} with patience = {}".format(self.best_score,
+                                                                                               self.patience))
                 self.early_stop = True
         else:
             self.best_score = score
