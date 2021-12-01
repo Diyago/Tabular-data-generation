@@ -28,8 +28,8 @@ import pandas as pd
 import numpy as np
 
 # random input data
-train = pd.DataFrame(np.random.randint(-10, 150, size=(50, 4)), columns=list("ABCD"))
-target = pd.DataFrame(np.random.randint(0, 2, size=(50, 1)), columns=list("Y"))
+train = pd.DataFrame(np.random.randint(-10, 150, size=(150, 4)), columns=list("ABCD"))
+target = pd.DataFrame(np.random.randint(0, 2, size=(150, 1)), columns=list("Y"))
 test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list("ABCD"))
 
 # generate data

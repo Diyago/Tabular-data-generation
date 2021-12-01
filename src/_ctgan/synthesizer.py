@@ -39,7 +39,7 @@ class EarlyStopping:
         elif score < self.best_score + self.delta:
             self.counter += 1
             if self.counter >= self.patience:
-                logging.info("Early stoping for GAN. Best score: {} with patience = {}".format(self.best_score,
+                logging.info("Early stoping for GAN. Best score: {:.2f} with patience = {}".format(self.best_score,
                                                                                                self.patience))
                 self.early_stop = True
         else:
