@@ -33,7 +33,7 @@ new_train2, new_target2 = GANGenerator().generate_data_pipe(train, target, test,
 # example with all params defined
 new_train3, new_target3 = GANGenerator(gen_x_times=1.1, cat_cols=None,
            bot_filter_quantile=0.001, top_filter_quantile=0.999, is_post_process=True,
-           adversaial_model_params={
+           adversarial_model_params={
                "metrics": "AUC", "max_depth": 2, "max_bin": 100, 
                "learning_rate": 0.02, "random_state": 42, "n_estimators": 500,
            }, pregeneration_frac=2, only_generated_data=False,
@@ -50,7 +50,7 @@ Both samplers `OriginalGenerator` and `GANGenerator` have same input parameters:
 * **top_filter_quantile**: float = 0.999 - bottom quantile for postprocess filtering
 * **is_post_process**: bool = True - perform or not post-filtering, if false bot_filter_quantile and top_filter_quantile
   ignored
-* **adversaial_model_params**: dict params for adversarial filtering model, default values for binary task
+* **adversarial_model_params**: dict params for adversarial filtering model, default values for binary task
 * **pregeneration_frac**: float = 2 - for generataion step gen_x_times * pregeneration_frac amount of data will
   generated. However in postprocessing (1 + gen_x_times) % of original data will be returned
 * **gan_params**: dict params for GAN training

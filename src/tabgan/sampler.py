@@ -45,23 +45,23 @@ class GANGenerator(SampleData):
 
 class SamplerOriginal(Sampler):
     def __init__(
-        self,
-        gen_x_times: float = 1.1,
-        cat_cols: list = None,
-        bot_filter_quantile: float = 0.001,
-        top_filter_quantile: float = 0.999,
-        is_post_process: bool = True,
-        adversaial_model_params: dict = {
-            "metrics": "AUC",
-            "max_depth": 2,
-            "max_bin": 100,
-            "n_estimators": 500,
-            "learning_rate": 0.02,
-            "random_state": 42,
-        },
-        pregeneration_frac: float = 2,
-        only_generated_data: bool = False,
-        gan_params: dict = {'batch_size': 500, 'patience': 25, "epochs" : 500,}
+            self,
+            gen_x_times: float = 1.1,
+            cat_cols: list = None,
+            bot_filter_quantile: float = 0.001,
+            top_filter_quantile: float = 0.999,
+            is_post_process: bool = True,
+            adversarial_model_params: dict = {
+                "metrics": "AUC",
+                "max_depth": 2,
+                "max_bin": 100,
+                "n_estimators": 500,
+                "learning_rate": 0.02,
+                "random_state": 42,
+            },
+            pregeneration_frac: float = 2,
+            only_generated_data: bool = False,
+            gan_params: dict = {'batch_size': 500, 'patience': 25, "epochs": 500, }
     ):
         """
 
@@ -75,7 +75,8 @@ class SamplerOriginal(Sampler):
         @param adversarial_model_params: dict params for adversarial filtering model, default values for binary task
         @param pregeneration_frac: float = 2 - for generation step gen_x_times * pregeneration_frac amount of data
         will generated. However in postprocessing (1 + gen_x_times) % of original data will be returned
-        @param only_generated_data: bool = False If True after generation get only newly generated, without concating input train dataframe.
+        @param only_generated_data: bool = False If True after generation get only newly generated, without
+        concating input train dataframe.
         @param gan_params: dict params for GAN training
         Only works for SamplerGAN.
         """
@@ -84,13 +85,14 @@ class SamplerOriginal(Sampler):
         self.is_post_process = is_post_process
         self.bot_filter_quantile = bot_filter_quantile
         self.top_filter_quantile = top_filter_quantile
-        self.adversarial_model_params = adversaial_model_params
+        self.adversarial_model_params = adversarial_model_params
         self.pregeneration_frac = pregeneration_frac
         self.only_generated_data = only_generated_data
         self.gan_params = gan_params
         self.TEMP_TARGET = "TEMP_TARGET"
 
-    def preprocess_data_df(self, df) -> pd.DataFrame:
+    @staticmethod
+    def preprocess_data_df(df) -> pd.DataFrame:
         logging.info("Input shape: {}".format(df.shape))
         if isinstance(df, pd.DataFrame) is False:
             raise ValueError(
@@ -99,7 +101,7 @@ class SamplerOriginal(Sampler):
         return df
 
     def preprocess_data(
-        self, train, target, test_df
+            self, train, target, test_df
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         train = self.preprocess_data_df(train)
         target = self.preprocess_data_df(target)
@@ -119,10 +121,10 @@ class SamplerOriginal(Sampler):
         return train, target, test_df
 
     def generate_data(
-        self, train_df, target, test_df, only_generated_data
+            self, train_df, target, test_df, only_generated_data
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         if only_generated_data:
-            Warning.warn(
+            Warning(
                 "For SamplerOriginal setting only_generated_data doesn't change anything, "
                 "because generated data sampled from the train!"
             )
@@ -158,7 +160,7 @@ class SamplerOriginal(Sampler):
                 max_val = test_df[num_col].quantile(self.top_filter_quantile)
                 filtered_df = train_df.loc[
                     (train_df[num_col] >= min_val) & (train_df[num_col] <= max_val)
-                ]
+                    ]
                 if filtered_df.shape[0] < 10:
                     raise ValueError(
                         "After post-processing generated data's shape less than 10. For columns {} test "
@@ -236,7 +238,7 @@ class SamplerOriginal(Sampler):
 
 class SamplerGAN(SamplerOriginal):
     def generate_data(
-        self, train_df, target, test_df, only_generated_data: bool
+            self, train_df, target, test_df, only_generated_data: bool
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         self._validate_data(train_df, target, test_df)
         if target is not None:
@@ -298,7 +300,7 @@ def _sampler(creator: SampleData, in_train, in_target, in_test) -> None:
 
 def _drop_col_if_exist(df, col_to_drop) -> pd.DataFrame:
     """
-    Drops col_to_drop from input dataframe df if sucj column exists
+    Drops col_to_drop from input dataframe df if such column exists
     """
     if col_to_drop in df.columns:
         return df.drop(col_to_drop, axis=1)
