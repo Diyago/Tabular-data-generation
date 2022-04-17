@@ -214,8 +214,7 @@ is better.
 ## Acknowledgments
 
 The author would like to thank Open Data Science community [7] for many valuable discussions and educational help in the
-growing field of machine and deep learning. Also, special big thanks to Sber [8] for allowing solving such tasks and
-providing computational resources.
+growing field of machine and deep learning.
 
 ## Citation
 
@@ -263,4 +262,3 @@ Image Quality of StyleGAN (2019) arXiv:1912.04958v2 [cs.CV]
 
 [8]  ODS.ai: Open data science (2020), https://ods.ai/
 
-[9]  Sber (2020), https://www.sberbank.ru/
