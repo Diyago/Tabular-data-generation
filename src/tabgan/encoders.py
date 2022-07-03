@@ -203,6 +203,7 @@ class MultipleEncoder:
 
         # concat cat cols representations with initial dataframe
         for df in self.storage:
+            df.index = X.index
             X = pd.concat([X, df], axis=1)
 
         # remove all columns as far as we have their representations
@@ -226,6 +227,7 @@ class MultipleEncoder:
 
         # concat cat cols representations with initial dataframe
         for df in self.storage:
+            df.index = X.index
             X = pd.concat([X, df], axis=1)
 
         # remove all columns as far as we have their representations
