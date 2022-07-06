@@ -49,7 +49,7 @@ class TestSamplerOriginal(TestCase):
     def test_generate_data(self):
         new_train, new_target, test_df = self.sampler.preprocess_data(self.train.copy(),
                                                                       self.target.copy(), self.test)
-        gen_train, gen_target = self.sampler.generate_data(new_train, new_target, test_df)
+        gen_train, gen_target = self.sampler.generate_data(new_train, new_target, test_df, only_generated_data=False)
         self.assertEqual(gen_train.shape[0], gen_target.shape[0])
         self.assertEqual(np.max(self.target.nunique()), np.max(new_target.nunique()))
         self.assertTrue(gen_train.shape[0] > new_train.shape[0])
@@ -58,7 +58,7 @@ class TestSamplerOriginal(TestCase):
     def test_postprocess_data(self):
         new_train, new_target, test_df = self.sampler.preprocess_data(self.train.copy(),
                                                                       self.target.copy(), self.test)
-        gen_train, gen_target = self.sampler.generate_data(new_train, new_target, test_df)
+        gen_train, gen_target = self.sampler.generate_data(new_train, new_target, test_df, only_generated_data=False)
         new_train, new_target = self.sampler.postprocess_data(gen_train, gen_target, test_df)
         self.assertEqual(new_train.shape[0], new_target.shape[0])
         self.assertGreaterEqual(new_train.iloc[:, 0].min(), test_df.iloc[:, 0].min())
@@ -67,7 +67,7 @@ class TestSamplerOriginal(TestCase):
     def test_adversarial_filtering(self):
         new_train, new_target, test_df = self.sampler.preprocess_data(self.train.copy(),
                                                                       self.target.copy(), self.test)
-        gen_train, gen_target = self.sampler.generate_data(new_train, new_target, test_df)
+        gen_train, gen_target = self.sampler.generate_data(new_train, new_target, test_df, only_generated_data=False)
         new_train, new_target = self.sampler.postprocess_data(gen_train, gen_target, test_df)
         new_train, new_target = self.sampler.adversarial_filtering(new_train, new_target, test_df)
         self.assertEqual(new_train.shape[0], new_target.shape[0])
