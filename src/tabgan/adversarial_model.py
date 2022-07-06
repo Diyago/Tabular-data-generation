@@ -52,7 +52,7 @@ class AdversarialModel:
         left_df["gt"] = 0
         right_df["gt"] = 1
 
-        concated = pd.concat([left_df, right_df])
+        concated = pd.concat([left_df, right_df], ignore_index=True)
         lgb_model = Model(
             cat_validation=self.cat_validation,
             encoders_names=self.encoders_names,
@@ -129,16 +129,19 @@ class Model:
         for n_fold, (train_idx, val_idx) in enumerate(
                 self.model_validation.split(X, y)
         ):
-            X_train, X_val = (
-                X.iloc[train_idx].reset_index(drop=True),
-                X.iloc[val_idx].reset_index(drop=True),
-            )
-            y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
+
+            X_train = X.loc[train_idx]
+            y_train = y.loc[train_idx]
+
+            X_val = X.loc[val_idx]
+            y_val = y.loc[val_idx]
+
             if self.cat_cols is not None:
                 if self.cat_validation == "Single":
                     encoder = MultipleEncoder(
                         cols=self.cat_cols, encoders_names_tuple=self.encoders_names
                     )
+
                     X_train = encoder.fit_transform(X_train, y_train)
                     X_val = encoder.transform(X_val)
                 if self.cat_validation == "Double":
@@ -154,7 +157,7 @@ class Model:
                     X_train[col] = X_train[col].astype("category")
                     X_val[col] = X_val[col].astype("category")
 
-            # fit model
+            # fit model            
             model = LGBMClassifier(**self.model_params)
             model.fit(
                 X_train,
