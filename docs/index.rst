@@ -9,8 +9,7 @@ This is the documentation of **tabgan**.
     This is the main page of your project's `Sphinx`_ documentation.
     It is formatted in `reStructuredText`_. Add additional pages
     by creating rst-files in ``docs`` and adding them to the `toctree`_ below.
-    Use then `references`_ in order to link them from this page, e.g.
-    :ref:`authors` and :ref:`changes`.
+
 
     It is also possible to refer to the documentation of other Python packages
     with the `Python domain syntax`_. By default you can reference the
@@ -23,24 +22,10 @@ This is the documentation of **tabgan**.
     `Google style`_ (recommended!), `NumPy style`_ and `classical style`_.
 
 
-Contents
-========
-
-.. toctree::
-   :maxdepth: 2
-
-   License <license>
-   Authors <authors>
-   Changelog <changelog>
-   Module Reference <api/modules>
-
-
 Indices and tables
 ==================
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+
 
 .. _toctree: http://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html
 .. _reStructuredText: http://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html

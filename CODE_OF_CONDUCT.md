@@ -1,19 +1,23 @@
 # Rules and Tips
 
 ## Development
-1. Adding tags
+1.  Before a commit configure prehooks `pre-commit install`
+2. Adding tags
 * To get listed tags
 `git tag`
 
-* To set current commit a tag `git tag 0.1.3`
+* To set a current commit a tag `git tag 0.1.3`
 * Pushing tags to repository `git push origin --tags`
 
-2. Building new distributive: `python setup.py sdist`
+3. Building new distributive: `python setup.py bdist_wheel`
    * If generated file under `./dist` folder contains `.dirty` like this: `'tabgan-0.1.3+g5249cf6.dirty`
- you should fix that! In order to do that, you should look for uncommited files: `git status`
+ you should fix that! In order to do that, you should look for uncommitted files: `git status`
 
-3. Uploading project to test PIP:
+4. Uploading project to test PIP:
 `twine upload --repository-url https://test.pypi.org/legacy/ dist/*`
+   
+5. Uploading project to prod PIP:
+`twine upload --repository-url https://upload.pypi.org/legacy/ dist/*`
 
 # Contributor Covenant Code of Conduct
 
