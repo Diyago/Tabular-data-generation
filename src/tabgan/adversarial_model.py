@@ -4,7 +4,8 @@ from lightgbm import LGBMClassifier
 from scipy.stats import rankdata
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedKFold
-from encoders import MultipleEncoder, DoubleValidationEncoderNumerical
+
+from tabgan.encoders import MultipleEncoder, DoubleValidationEncoderNumerical
 
 
 class AdversarialModel:
@@ -17,13 +18,15 @@ class AdversarialModel:
             model_params=None,
     ):
         '''
-        Class for fit predicting tabular models, mostly - boostings. Several encoders for categorical features are supported
+        Class for fit predicting tabular models, mostly - boostings. Several encoders for categorical features are
+        supported
 
         Args:
             cat_validation: categorical type of validation, examples: "None", "Single" and "Double"
             encoders_names: different categorical encoders from category_encoders library, example CatBoostEncoder
             cat_cols: list of categorical columns
-            model_validation: model training cross validation type from sklearn.model_selection, example StratifiedKFold(5)
+            model_validation: model training cross validation type from sklearn.model_selection,
+            example StratifiedKFold(5)
             model_params: model training hyperparameters
         '''
         self.cat_validation = cat_validation
@@ -49,7 +52,7 @@ class AdversarialModel:
         left_df["gt"] = 0
         right_df["gt"] = 1
 
-        concated = pd.concat([left_df, right_df])
+        concated = pd.concat([left_df, right_df], ignore_index=True)
         lgb_model = Model(
             cat_validation=self.cat_validation,
             encoders_names=self.encoders_names,
@@ -126,16 +129,19 @@ class Model:
         for n_fold, (train_idx, val_idx) in enumerate(
                 self.model_validation.split(X, y)
         ):
-            X_train, X_val = (
-                X.iloc[train_idx].reset_index(drop=True),
-                X.iloc[val_idx].reset_index(drop=True),
-            )
-            y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
+
+            X_train = X.loc[train_idx]
+            y_train = y.loc[train_idx]
+
+            X_val = X.loc[val_idx]
+            y_val = y.loc[val_idx]
+
             if self.cat_cols is not None:
                 if self.cat_validation == "Single":
                     encoder = MultipleEncoder(
                         cols=self.cat_cols, encoders_names_tuple=self.encoders_names
                     )
+
                     X_train = encoder.fit_transform(X_train, y_train)
                     X_val = encoder.transform(X_val)
                 if self.cat_validation == "Double":
@@ -151,7 +157,7 @@ class Model:
                     X_train[col] = X_train[col].astype("category")
                     X_val[col] = X_val[col].astype("category")
 
-            # fit model
+            # fit model            
             model = LGBMClassifier(**self.model_params)
             model.fit(
                 X_train,
@@ -176,27 +182,31 @@ class Model:
 
         return mean_score_train, mean_score_val, avg_num_trees
 
-    def predict(self, X: pd.DataFrame, return_shape=True) -> np.array:
+    def predict(self, X: pd.DataFrame) -> np.array:
         """
         Making inference with trained models for input dataframe
         Args:
             X: input dataframe for inference
-            return_shape: boolean return shape if True
 
-        Returns: Predicted ranks and number of input features if return_shape is True
+        Returns: Predicted ranks
 
         """
         y_hat = np.zeros(X.shape[0])
-        for encoder, model in zip(self.encoders_list, self.models_list):
-            X_test = X.copy()
-            X_test = encoder.transform(X_test)
+        if self.encoders_list is not None and self.encoders_list != []:
+            for encoder, model in zip(self.encoders_list, self.models_list):
+                X_test = X.copy()
+                X_test = encoder.transform(X_test)
 
-            # check for OrdinalEncoder encoding
-            for col in [col for col in X_test.columns if "OrdinalEncoder" in col]:
-                X_test[col] = X_test[col].astype("category")
+                # check for OrdinalEncoder encoding
+                for col in [col for col in X_test.columns if "OrdinalEncoder" in col]:
+                    X_test[col] = X_test[col].astype("category")
 
-            unranked_preds = model.predict_proba(X_test)[:, 1]
-            y_hat += rankdata(unranked_preds)
-        if return_shape:
-            return y_hat, X_test.shape[1]
+                unranked_preds = model.predict_proba(X_test)[:, 1]
+                y_hat += rankdata(unranked_preds)
+        else:
+            for model in self.models_list:
+                X_test = X.copy()
+
+                unranked_preds = model.predict_proba(X_test)[:, 1]
+                y_hat += rankdata(unranked_preds)
         return y_hat

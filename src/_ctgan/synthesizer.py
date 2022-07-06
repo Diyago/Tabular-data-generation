@@ -1,11 +1,15 @@
+import logging
+
 import numpy as np
 import torch
-from ctgan.conditional import ConditionalGenerator
-from ctgan.models import Discriminator, Generator
-from ctgan.sampler import Sampler
-from ctgan.transformer import DataTransformer
 from torch import optim
 from torch.nn import functional
+from tqdm.autonotebook import tqdm
+
+from _ctgan.conditional import ConditionalGenerator
+from _ctgan.models import Discriminator, Generator
+from _ctgan.sampler import Sampler
+from _ctgan.transformer import DataTransformer
 
 
 class EarlyStopping:
@@ -16,13 +20,10 @@ class EarlyStopping:
         Args:
             patience (int): How long to wait after last time validation loss improved.
                             Default: 7
-            verbose (bool): If True, prints a message for each validation loss improvement.
-                            Default: False
             delta (float): Minimum change in the monitored quantity to qualify as an improvement.
                             Default: 0
         """
         self.patience = patience
-        self.verbose = verbose
         self.counter = 0
         self.best_score = None
         self.early_stop = False
@@ -37,15 +38,16 @@ class EarlyStopping:
             self.best_score = score
         elif score < self.best_score + self.delta:
             self.counter += 1
-            #print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
             if self.counter >= self.patience:
+                logging.info("Early stoping for GAN. Best score: {:.2f} with patience = {}".format(self.best_score,
+                                                                                               self.patience))
                 self.early_stop = True
         else:
             self.best_score = score
             self.counter = 0
 
 
-class CTGANSynthesizer(object):
+class _CTGANSynthesizer(object):
     """Conditional Table GAN Synthesizer.
 
     This is the core class of the CTGAN project, where the different components
@@ -69,8 +71,15 @@ class CTGANSynthesizer(object):
             Number of data samples to process in each step.
     """
 
-    def __init__(self, embedding_dim=128, gen_dim=(256, 256), dis_dim=(256, 256),
-                 l2scale=1e-6, batch_size=500, patience=25):
+    def __init__(
+        self,
+        embedding_dim=128,
+        gen_dim=(256, 256),
+        dis_dim=(256, 256),
+        l2scale=1e-6,
+        batch_size=500,
+        patience=25,
+    ):
 
         self.embedding_dim = embedding_dim
         self.gen_dim = gen_dim
@@ -84,11 +93,11 @@ class CTGANSynthesizer(object):
         data_t = []
         st = 0
         for item in self.transformer.output_info:
-            if item[1] == 'tanh':
+            if item[1] == "tanh":
                 ed = st + item[0]
                 data_t.append(torch.tanh(data[:, st:ed]))
                 st = ed
-            elif item[1] == 'softmax':
+            elif item[1] == "softmax":
                 ed = st + item[0]
                 data_t.append(functional.gumbel_softmax(data[:, st:ed], tau=0.2))
                 st = ed
@@ -103,11 +112,11 @@ class CTGANSynthesizer(object):
         st_c = 0
         skip = False
         for item in self.transformer.output_info:
-            if item[1] == 'tanh':
+            if item[1] == "tanh":
                 st += item[0]
                 skip = True
 
-            elif item[1] == 'softmax':
+            elif item[1] == "softmax":
                 if skip:
                     skip = False
                     st += item[0]
@@ -118,7 +127,7 @@ class CTGANSynthesizer(object):
                 tmp = functional.cross_entropy(
                     data[:, st:ed],
                     torch.argmax(c[:, st_c:ed_c], dim=1),
-                    reduction='none'
+                    reduction="none",
                 )
                 loss.append(tmp)
                 st = ed
@@ -158,25 +167,22 @@ class CTGANSynthesizer(object):
 
         data_dim = self.transformer.output_dimensions
         self.cond_generator = ConditionalGenerator(
-            train_data,
-            self.transformer.output_info,
-            log_frequency
+            train_data, self.transformer.output_info, log_frequency
         )
 
         self.generator = Generator(
-            self.embedding_dim + self.cond_generator.n_opt,
-            self.gen_dim,
-            data_dim
+            self.embedding_dim + self.cond_generator.n_opt, self.gen_dim, data_dim
         ).to(self.device)
 
         discriminator = Discriminator(
-            data_dim + self.cond_generator.n_opt,
-            self.dis_dim
+            data_dim + self.cond_generator.n_opt, self.dis_dim
         ).to(self.device)
 
         optimizerG = optim.Adam(
-            self.generator.parameters(), lr=2e-4, betas=(0.5, 0.9),
-            weight_decay=self.l2scale
+            self.generator.parameters(),
+            lr=2e-4,
+            betas=(0.5, 0.9),
+            weight_decay=self.l2scale,
         )
         optimizerD = optim.Adam(discriminator.parameters(), lr=2e-4, betas=(0.5, 0.9))
 
@@ -188,7 +194,8 @@ class CTGANSynthesizer(object):
         early_stopping = EarlyStopping(patience=self.patience, verbose=False)
 
         steps_per_epoch = max(len(train_data) // self.batch_size, 1)
-        for i in range(epochs):
+
+        for i in tqdm(range(epochs), desc="Training CTGAN, epochs:"):
             for id_ in range(steps_per_epoch):
                 fakez = torch.normal(mean=mean, std=std)
 
@@ -210,7 +217,7 @@ class CTGANSynthesizer(object):
                 fake = self.generator(fakez)
                 fakeact = self._apply_activate(fake)
 
-                real = torch.from_numpy(real.astype('float32')).to(self.device)
+                real = torch.from_numpy(real.astype("float32")).to(self.device)
 
                 if c1 is not None:
                     fake_cat = torch.cat([fakeact, c1], dim=1)
@@ -222,7 +229,9 @@ class CTGANSynthesizer(object):
                 y_fake = discriminator(fake_cat)
                 y_real = discriminator(real_cat)
 
-                pen = discriminator.calc_gradient_penalty(real_cat, fake_cat, self.device)
+                pen = discriminator.calc_gradient_penalty(
+                    real_cat, fake_cat, self.device
+                )
                 loss_d = -(torch.mean(y_real) - torch.mean(y_fake))
                 train_losses.append(loss_d.item())
                 optimizerD.zero_grad()
@@ -261,13 +270,9 @@ class CTGANSynthesizer(object):
                 optimizerG.step()
             early_stopping(np.average(train_losses))
             if early_stopping.early_stop:
-                print("GAN: Early stopping after epochs {}".format(i))
+                logging.info("Early stopping in GAN training!")
                 break
             train_losses = []
-
-            # print("Epoch %d, Loss G: %.4f, Loss D: %.4f" %
-            #       (i + 1, loss_g.detach().cpu(), loss_d.detach().cpu()),
-            #       flush=True)
 
     def sample(self, n):
         """Sample data similar to the training data.

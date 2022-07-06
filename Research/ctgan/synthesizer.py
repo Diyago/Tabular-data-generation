@@ -1,11 +1,12 @@
 import numpy as np
 import torch
-from ctgan.conditional import ConditionalGenerator
-from ctgan.models import Discriminator, Generator
-from ctgan.sampler import Sampler
-from ctgan.transformer import DataTransformer
 from torch import optim
 from torch.nn import functional
+
+from _ctgan.conditional import ConditionalGenerator
+from _ctgan.models import Discriminator, Generator
+from _ctgan.sampler import Sampler
+from _ctgan.transformer import DataTransformer
 
 
 class EarlyStopping:

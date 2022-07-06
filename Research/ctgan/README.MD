@@ -47,7 +47,7 @@ we develop a new model called CTGAN. Several major differences make CTGAN outper
 The recommended way to installing **CTGAN** is using [pip](https://pip.pypa.io/en/stable/):
 
 ```bash
-pip install ctgan
+pip install _ctgan
 ```
 
 This will pull and install the latest stable release from [PyPI](https://pypi.org/).
@@ -98,7 +98,7 @@ Before being able to use CTGAN you will need to prepare your data as specified a
 For this example, we will be loading some data using the `ctgan.load_demo` function.
 
 ```python
-from ctgan import load_demo
+from _ctgan import load_demo
 
 data = load_demo()
 ```
@@ -140,7 +140,7 @@ Once you have the data ready, you need to import and create an instance of the `
 class and fit it passing your data and the list of discrete columns.
 
 ```python
-from ctgan import CTGANSynthesizer
+from _ctgan import _CTGANSynthesizer
 
 ctgan = CTGANSynthesizer()
 ctgan.fit(data, discrete_columns)
