@@ -253,12 +253,12 @@ Yoshua Bengio. Generative Adversarial Networks (2014). arXiv:1406.2661
 [4] Lei Xu, Maria Skoularidou, Alfredo Cuesta-Infante, Kalyan Veeramachaneni. Modeling Tabular Data using Conditional
 GAN (2019). arXiv:1907.00503v2 [cs.LG]
 
-[5] Denis Vorotyntsev. Benchmarking Categorical Encoders (2019). Medium post
+[5] Denis Vorotyntsev. Benchmarking Categorical Encoders. Medium post
 
-[6] Insaf Ashrapov. GAN-for-tabular-data (2020). Github repository.
+[6] Insaf Ashrapov. GAN-for-tabular-data. Github repository.
 
 [7] Tero Karras, Samuli Laine, Miika Aittala, Janne Hellsten, Jaakko Lehtinen, Timo Aila. Analyzing and Improving the
 Image Quality of StyleGAN (2019) arXiv:1912.04958v2 [cs.CV]
 
-[8]  ODS.ai: Open data science (2020), https://ods.ai/
+[8]  ODS.ai: Open data science, https://ods.ai/
 
