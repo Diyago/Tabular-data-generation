@@ -164,7 +164,6 @@ class Model:
                 y_train,
                 eval_set=[(X_train, y_train), (X_val, y_val)],
                 early_stopping_rounds=50,
-                verbose=False,
             )
             self.models_trees.append(model.best_iteration_)
             self.models_list.append(model)
