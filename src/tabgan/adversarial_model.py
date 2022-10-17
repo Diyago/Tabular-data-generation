@@ -5,6 +5,9 @@ from scipy.stats import rankdata
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedKFold
 
+from lightgbm import early_stopping
+from lightgbm import log_evaluation
+
 from tabgan.encoders import MultipleEncoder, DoubleValidationEncoderNumerical
 
 
