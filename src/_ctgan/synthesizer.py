@@ -15,7 +15,7 @@ from _ctgan.transformer import DataTransformer
 class EarlyStopping:
     """Early stops the training if validation loss doesn't improve after a given patience."""
 
-    def __init__(self, patience=7, verbose=False, delta=0):
+    def __init__(self, patience=7, delta=0):
         """
         Args:
             patience (int): How long to wait after last time validation loss improved.
@@ -191,7 +191,7 @@ class _CTGANSynthesizer(object):
         std = mean + 1
 
         train_losses = []
-        early_stopping = EarlyStopping(patience=self.patience, verbose=False)
+        early_stopping = EarlyStopping(patience=self.patience)
 
         steps_per_epoch = max(len(train_data) // self.batch_size, 1)
 
