@@ -29,6 +29,7 @@ class EarlyStopping:
         self.early_stop = False
         self.val_loss_min = np.Inf
         self.delta = delta
+        self.verbose = verbose
 
     def __call__(self, val_loss):
 
