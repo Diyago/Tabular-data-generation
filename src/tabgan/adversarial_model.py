@@ -108,7 +108,7 @@ class Model:
         self.scores_list_train = []
         self.scores_list_val = []
         self.models_trees = []
-    @ignore_warnings(category=DeprecationWarning)
+
     def fit(self, X: pd.DataFrame, y: np.array) -> tuple:
         """
         Fits model with speficified in init params
