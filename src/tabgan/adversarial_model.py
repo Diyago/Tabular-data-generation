@@ -7,7 +7,6 @@ from sklearn.model_selection import StratifiedKFold
 
 from lightgbm import early_stopping
 from lightgbm import log_evaluation
-from lightgbm import print_evaluation
 
 from tabgan.encoders import MultipleEncoder, DoubleValidationEncoderNumerical
 
@@ -167,7 +166,7 @@ class Model:
                 X_train,
                 y_train,
                 eval_set=[(X_train, y_train), (X_val, y_val)],
-                callbacks=[early_stopping(stopping_rounds=50,verbose=False), log_evaluation(show_stdv=False), print_evaluation(show_stdv=False)],
+                callbacks=[early_stopping(stopping_rounds=50,verbose=False), log_evaluation(show_stdv=False)],
             )
             self.models_trees.append(model.best_iteration_)
             self.models_list.append(model)
