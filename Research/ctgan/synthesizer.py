@@ -46,7 +46,7 @@ class EarlyStopping:
             self.counter = 0
 
 
-class CTGANSynthesizer(object):
+class CTGANSynthesizer:
     """Conditional Table GAN Synthesizer.
 
     This is the core class of the CTGAN project, where the different components

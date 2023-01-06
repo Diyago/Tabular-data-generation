@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class Sampler(object):
+class Sampler:
     """docstring for Sampler."""
 
     def __init__(self, data, output_info):

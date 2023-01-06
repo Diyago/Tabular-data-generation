@@ -7,7 +7,7 @@ from sklearn.utils._testing import ignore_warnings
 from tqdm.autonotebook import tqdm
 
 
-class DataTransformer(object):
+class DataTransformer:
     """Data Transformer.
 
     Model continuous columns with a BayesianGMM and normalized to a scalar
