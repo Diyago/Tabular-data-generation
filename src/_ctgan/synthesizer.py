@@ -102,7 +102,7 @@ class _CTGANSynthesizer(object):
                 data_t.append(functional.gumbel_softmax(data[:, st:ed], tau=0.2))
                 st = ed
             else:
-                assert 0
+                raise AssertionError
 
         return torch.cat(data_t, dim=1)
 
@@ -134,7 +134,7 @@ class _CTGANSynthesizer(object):
                 st_c = ed_c
 
             else:
-                assert 0
+                raise AssertionError
 
         loss = torch.stack(loss, dim=1)
 
@@ -186,7 +186,8 @@ class _CTGANSynthesizer(object):
         )
         optimizerD = optim.Adam(discriminator.parameters(), lr=2e-4, betas=(0.5, 0.9))
 
-        assert self.batch_size % 2 == 0
+        if self.batch_size % 2 != 0:
+            raise AssertionError
         mean = torch.zeros(self.batch_size, self.embedding_dim, device=self.device)
         std = mean + 1
 

@@ -47,7 +47,8 @@ def read_tsv(data_filename, meta_filename):
             continuous.append(idx)
             column_info.append((float(item[1]), float(item[2])))
         else:
-            assert item[0] == 'D'
+            if item[0] != 'D':
+                raise AssertionError
             discrete.append(idx)
             column_info.append(item[1:])
 
@@ -68,7 +69,8 @@ def read_tsv(data_filename, meta_filename):
             if idx in continuous:
                 row.append(col)
             else:
-                assert idx in discrete
+                if idx not in discrete:
+                    raise AssertionError
                 row.append(column_info[idx].index(col))
 
         data.append(row)
@@ -83,7 +85,8 @@ def write_tsv(data, meta, output_filename):
                 if idx in meta['continuous_columns']:
                     print(col, end=' ', file=f)
                 else:
-                    assert idx in meta['discrete_columns']
+                    if idx not in meta['discrete_columns']:
+                        raise AssertionError
                     print(meta['column_info'][idx][int(col)], end=' ', file=f)
 
             print(file=f)
