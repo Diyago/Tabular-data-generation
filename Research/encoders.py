@@ -107,7 +107,7 @@ class DoubleValidationEncoderNumerical:
                     [col for col in val_t.columns if col not in self.num_cols]
                 ].values
 
-                if encoder_name not in self.encoders_dict.keys():
+                if encoder_name not in self.encoders_dict:
                     cols_representation = np.zeros((X.shape[0], val_t.shape[1]))
                     self.encoders_dict[encoder_name] = [encoder]
                 else:
