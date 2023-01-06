@@ -28,7 +28,7 @@ class DataTransformer(object):
     @ignore_warnings(category=ConvergenceWarning)
     def _fit_continuous(self, column, data):
         gm = BayesianGaussianMixture(
-            self.n_clusters,
+            n_components=self.n_clusters,
             weight_concentration_prior_type='dirichlet_process',
             weight_concentration_prior=0.001,
             n_init=1
