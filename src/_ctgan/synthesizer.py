@@ -159,7 +159,6 @@ class _CTGANSynthesizer(object):
                 Whether to use log frequency of categorical levels in conditional
                 sampling. Defaults to ``True``.
         """
-
         self.transformer = DataTransformer()
         self.transformer.fit(train_data, discrete_columns)
         train_data = self.transformer.transform(train_data)
@@ -286,7 +285,6 @@ class _CTGANSynthesizer(object):
         Returns:
             numpy.ndarray or pandas.DataFrame
         """
-
         steps = n // self.batch_size + 1
         data = []
         for i in range(steps):

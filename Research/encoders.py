@@ -174,7 +174,6 @@ class MultipleEncoder:
         "FrequencyEncoder", "WOEEncoder", "TargetEncoder", "SumEncoder", "MEstimateEncoder", "LeaveOneOutEncoder",
         "HelmertEncoder", "BackwardDifferenceEncoder", "JamesSteinEncoder", "OrdinalEncoder""CatBoostEncoder"
         """
-
         self.cols = cols
         self.num_cols = None
         self.encoders_names_tuple = encoders_names_tuple

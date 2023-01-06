@@ -16,7 +16,6 @@ def save_dict_to_file(dic: dict, path: str, save_raw=False) -> None:
     :param path: Path to .txt file
     :return: None
     """
-
     f = open(path, "w")
     if save_raw:
         f.write(str(dic))
@@ -35,7 +34,6 @@ def save_exp_to_file(dic: dict, path: str) -> None:
     :param path: Path to .txt file
     :return: None
     """
-
     f = open(path, "a+")
     keys = dic.keys()
     vals = [str(val) for val in dic.values()]
@@ -59,7 +57,6 @@ def cat_cols_info(
     :param cat_cols: List of categorical columns
     :return: Dict with results
     """
-
     cc_info = {}
 
     for col in cat_cols:
@@ -134,7 +131,6 @@ def extend_gan_train(x_train, y_train, x_test, cat_cols, gen_x_times=1.2, epochs
     :param epochs: Number of epoch max to train the GAN
     :return: extended train with target
     """
-
     if gen_x_times == 0:
         raise ValueError("Passed gen_x_times with value 0!")
     x_train["target"] = y_train
