@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 from lightgbm import LGBMClassifier
+from lightgbm import early_stopping
+from lightgbm import log_evaluation
 from scipy.stats import rankdata
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedKFold
@@ -163,8 +165,7 @@ class Model:
                 X_train,
                 y_train,
                 eval_set=[(X_train, y_train), (X_val, y_val)],
-                early_stopping_rounds=50,
-                verbose=False,
+                callbacks=[early_stopping(stopping_rounds=50,verbose=False), log_evaluation(False)],
             )
             self.models_trees.append(model.best_iteration_)
             self.models_list.append(model)
