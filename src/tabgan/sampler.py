@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-todo write description
-"""
+"""todo write description"""
 
 import gc
 import logging
@@ -299,9 +297,7 @@ def _sampler(creator: SampleData, in_train, in_target, in_test) -> None:
 
 
 def _drop_col_if_exist(df, col_to_drop) -> pd.DataFrame:
-    """
-    Drops col_to_drop from input dataframe df if such column exists
-    """
+    """Drops col_to_drop from input dataframe df if such column exists"""
     if col_to_drop in df.columns:
         return df.drop(col_to_drop, axis=1)
     else:

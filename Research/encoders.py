@@ -66,9 +66,7 @@ def get_single_encoder(encoder_name: str, cat_cols: list):
 
 
 class DoubleValidationEncoderNumerical:
-    """
-    Encoder with validation within
-    """
+    """Encoder with validation within"""
 
     def __init__(self, cols, encoders_names_tuple=()):
         """
@@ -163,9 +161,7 @@ class DoubleValidationEncoderNumerical:
 
 
 class MultipleEncoder:
-    """
-    Multiple encoder for categorical columns
-    """
+    """Multiple encoder for categorical columns"""
 
     def __init__(self, cols: List[str], encoders_names_tuple=()):
         """

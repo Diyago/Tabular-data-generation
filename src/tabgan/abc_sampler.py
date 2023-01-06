@@ -18,9 +18,7 @@ class SampleData(ABC):
 
     @abstractmethod
     def get_object_generator(self):
-        """
-        Getter for object sampler aka generator, which is not a generator
-        """
+        """Getter for object sampler aka generator, which is not a generator"""
         raise NotImplementedError
 
     def generate_data_pipe(
@@ -84,14 +82,10 @@ class SampleData(ABC):
 
 
 class Sampler(ABC):
-    """
-        Interface for each sampling strategy
-    """
+    """Interface for each sampling strategy"""
 
     def get_generated_shape(self, input_df):
-        """
-        Calculates final output shape
-        """
+        """Calculates final output shape"""
         if self.gen_x_times <= 0:
             raise ValueError(
                 "Passed gen_x_times = {} should be bigger than 0".format(
