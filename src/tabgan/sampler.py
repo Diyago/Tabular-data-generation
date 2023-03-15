@@ -67,7 +67,7 @@ class SamplerOriginal(Sampler):
         adversarial filtering
         @param cat_cols: list = None - categorical columns
         @param bot_filter_quantile: float = 0.001 - bottom quantile for postprocess filtering
-        @param top_filter_quantile: float = 0.999 - bottom quantile for postprocess filtering
+        @param top_filter_quantile: float = 0.999 - top quantile for postprocess filtering
         @param is_post_process: bool = True - perform or not postfiltering, if false bot_filter_quantile
          and top_filter_quantile ignored
         @param adversarial_model_params: dict params for adversarial filtering model, default values for binary task
