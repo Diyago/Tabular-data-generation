@@ -86,7 +86,7 @@ class Model:
             encoders_names: different categorical encoders from category_encoders library, example CatBoostEncoder
             cat_cols: list of categorical columns
             model_validation: model training cross validation type from sklearn.model_selection, example StratifiedKFold(5)
-            model_params: model training hyperparameters
+            model_params: model training hyper-parameters
         '''
         self.cat_validation = cat_validation
         self.encoders_names = encoders_names
