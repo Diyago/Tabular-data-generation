@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class ConditionalGenerator(object):
+class ConditionalGenerator:
     def __init__(self, data, output_info, log_frequency):
         self.model = []
 
@@ -28,9 +28,10 @@ class ConditionalGenerator(object):
                 start = end
 
             else:
-                assert 0
+                raise AssertionError
 
-        assert start == data.shape[1]
+        if start != data.shape[1]:
+            raise AssertionError
 
         self.interval = []
         self.n_col = 0
@@ -59,7 +60,7 @@ class ConditionalGenerator(object):
                 self.n_col += 1
                 start = end
             else:
-                assert 0
+                raise AssertionError
 
         self.interval = np.asarray(self.interval)
 

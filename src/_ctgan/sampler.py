@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class Sampler(object):
+class Sampler:
     """docstring for Sampler."""
 
     def __init__(self, data, output_info):
@@ -30,9 +30,10 @@ class Sampler(object):
                 self.model.append(tmp)
                 st = ed
             else:
-                assert 0
+                raise AssertionError
 
-        assert st == data.shape[1]
+        if st != data.shape[1]:
+            raise AssertionError
 
     def sample(self, n, col, opt):
         if col is None:

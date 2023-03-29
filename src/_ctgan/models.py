@@ -40,7 +40,8 @@ class Discriminator(Module):
         self.seq = Sequential(*seq)
 
     def forward(self, input):
-        assert input.size()[0] % self.pack == 0
+        if input.size()[0] % self.pack != 0:
+            raise AssertionError
         return self.seq(input.view(-1, self.packdim))
 
 

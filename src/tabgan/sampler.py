@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-todo write description
-"""
+"""todo write description"""
 
 import gc
 import logging
@@ -69,7 +67,7 @@ class SamplerOriginal(Sampler):
         adversarial filtering
         @param cat_cols: list = None - categorical columns
         @param bot_filter_quantile: float = 0.001 - bottom quantile for postprocess filtering
-        @param top_filter_quantile: float = 0.999 - bottom quantile for postprocess filtering
+        @param top_filter_quantile: float = 0.999 - top quantile for postprocess filtering
         @param is_post_process: bool = True - perform or not postfiltering, if false bot_filter_quantile
          and top_filter_quantile ignored
         @param adversarial_model_params: dict params for adversarial filtering model, default values for binary task
@@ -299,9 +297,7 @@ def _sampler(creator: SampleData, in_train, in_target, in_test) -> None:
 
 
 def _drop_col_if_exist(df, col_to_drop) -> pd.DataFrame:
-    """
-    Drops col_to_drop from input dataframe df if such column exists
-    """
+    """Drops col_to_drop from input dataframe df if such column exists"""
     if col_to_drop in df.columns:
         return df.drop(col_to_drop, axis=1)
     else:

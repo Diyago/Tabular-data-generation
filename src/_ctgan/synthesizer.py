@@ -48,7 +48,7 @@ class EarlyStopping:
             self.counter = 0
 
 
-class _CTGANSynthesizer(object):
+class _CTGANSynthesizer:
     """Conditional Table GAN Synthesizer.
 
     This is the core class of the CTGAN project, where the different components
@@ -103,7 +103,7 @@ class _CTGANSynthesizer(object):
                 data_t.append(functional.gumbel_softmax(data[:, st:ed], tau=0.2))
                 st = ed
             else:
-                assert 0
+                raise AssertionError
 
         return torch.cat(data_t, dim=1)
 
@@ -135,7 +135,7 @@ class _CTGANSynthesizer(object):
                 st_c = ed_c
 
             else:
-                assert 0
+                raise AssertionError
 
         loss = torch.stack(loss, dim=1)
 
@@ -159,7 +159,6 @@ class _CTGANSynthesizer(object):
                 Whether to use log frequency of categorical levels in conditional
                 sampling. Defaults to ``True``.
         """
-
         self.transformer = DataTransformer()
         self.transformer.fit(train_data, discrete_columns)
         train_data = self.transformer.transform(train_data)
@@ -187,7 +186,8 @@ class _CTGANSynthesizer(object):
         )
         optimizerD = optim.Adam(discriminator.parameters(), lr=2e-4, betas=(0.5, 0.9))
 
-        assert self.batch_size % 2 == 0
+        if self.batch_size % 2 != 0:
+            raise AssertionError
         mean = torch.zeros(self.batch_size, self.embedding_dim, device=self.device)
         std = mean + 1
 
@@ -285,7 +285,6 @@ class _CTGANSynthesizer(object):
         Returns:
             numpy.ndarray or pandas.DataFrame
         """
-
         steps = n // self.batch_size + 1
         data = []
         for i in range(steps):

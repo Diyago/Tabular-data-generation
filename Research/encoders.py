@@ -66,9 +66,7 @@ def get_single_encoder(encoder_name: str, cat_cols: list):
 
 
 class DoubleValidationEncoderNumerical:
-    """
-    Encoder with validation within
-    """
+    """Encoder with validation within"""
 
     def __init__(self, cols, encoders_names_tuple=()):
         """
@@ -109,7 +107,7 @@ class DoubleValidationEncoderNumerical:
                     [col for col in val_t.columns if col not in self.num_cols]
                 ].values
 
-                if encoder_name not in self.encoders_dict.keys():
+                if encoder_name not in self.encoders_dict:
                     cols_representation = np.zeros((X.shape[0], val_t.shape[1]))
                     self.encoders_dict[encoder_name] = [encoder]
                 else:
@@ -163,9 +161,7 @@ class DoubleValidationEncoderNumerical:
 
 
 class MultipleEncoder:
-    """
-    Multiple encoder for categorical columns
-    """
+    """Multiple encoder for categorical columns"""
 
     def __init__(self, cols: List[str], encoders_names_tuple=()):
         """
@@ -174,7 +170,6 @@ class MultipleEncoder:
         "FrequencyEncoder", "WOEEncoder", "TargetEncoder", "SumEncoder", "MEstimateEncoder", "LeaveOneOutEncoder",
         "HelmertEncoder", "BackwardDifferenceEncoder", "JamesSteinEncoder", "OrdinalEncoder""CatBoostEncoder"
         """
-
         self.cols = cols
         self.num_cols = None
         self.encoders_names_tuple = encoders_names_tuple
