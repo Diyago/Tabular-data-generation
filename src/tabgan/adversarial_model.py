@@ -79,7 +79,7 @@ class Model:
             model_params=None,
     ):
         '''
-        Class for fit predicting tabular models, mostly - boostings. Several encoders for categorical features are supported
+        Class for fit predicting tabular models, mostly - boosting. Several encoders for categorical features are supported
 
         Args:
             cat_validation: categorical type of validation, examples: "None", "Single" and "Double"
