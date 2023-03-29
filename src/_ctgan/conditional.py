@@ -1,7 +1,21 @@
 import numpy as np
 
 
-class ConditionalGenerator:
+class ConditionalGenerator(object):
+    """A class that generates conditional data based on the given input data and output information.
+
+    Args:
+        data (numpy.ndarray): The input data.
+        output_info (list): A list of tuples containing information about the output data.
+        log_frequency (bool): A boolean value indicating whether to use logarithmic frequency.
+
+    Attributes:
+        model (list): A list of models.
+        interval (numpy.ndarray): An array of intervals.
+        n_col (int): The number of columns.
+        n_opt (int): The number of options.
+        p (numpy.ndarray): An array of probabilities.
+    """
     def __init__(self, data, output_info, log_frequency):
         self.model = []
 
@@ -65,11 +79,23 @@ class ConditionalGenerator:
         self.interval = np.asarray(self.interval)
 
     def random_choice_prob_index(self, idx):
+        """Randomly selects an index based on the given probabilities.
+        Args:
+            idx (numpy.ndarray): An array of indices.
+        Returns:
+            numpy.ndarray: An array of randomly selected indices.
+        """
         a = self.p[idx]
         r = np.expand_dims(np.random.rand(a.shape[0]), axis=1)
         return (a.cumsum(axis=1) > r).argmax(axis=1)
 
     def sample(self, batch):
+        """Samples data based on the given batch size.
+        Args:
+            batch (int): The batch size.
+        Returns:
+            tuple: A tuple containing the generated data, mask, index, and option.
+        """
         if self.n_col == 0:
             return None
 
@@ -86,6 +112,12 @@ class ConditionalGenerator:
         return vec1, mask1, idx, opt1prime
 
     def sample_zero(self, batch):
+        """Samples zero data based on the given batch size.
+        Args:
+            batch (int): The batch size.
+        Returns:
+            numpy.ndarray: An array of generated zero data.
+        """
         if self.n_col == 0:
             return None
 
