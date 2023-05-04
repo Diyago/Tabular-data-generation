@@ -1,7 +1,11 @@
 import logging
 import sys
+import os
+import random
 
 import pandas as pd
+import numpy as np
+import torch
 
 
 def setup_logging(loglevel):
@@ -31,12 +35,21 @@ def get_year_mnth_dt_from_date(df: pd.DataFrame, date_col='Date') -> pd.DataFram
     return df
 
 
-def collect_dates(df: pd.DataFrame)-> pd.DataFrame:
+def collect_dates(df: pd.DataFrame) -> pd.DataFrame:
     df["Date"] = df['year'].astype(str) + '-' \
-                        + df['month'].astype(str).apply(make_two_digit) + '-' \
-                        + df['day'].astype(str).apply(make_two_digit)
-    df.drop(['year','month','day'], axis=1,inplace=True)
+                 + df['month'].astype(str).apply(make_two_digit) + '-' \
+                 + df['day'].astype(str).apply(make_two_digit)
+    df.drop(['year', 'month', 'day'], axis=1, inplace=True)
     return df
+
+
+def seed_everything(seed=1234):
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
 
 
 TEMP_TARGET = "_temp_target"

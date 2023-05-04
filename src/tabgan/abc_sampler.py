@@ -2,7 +2,7 @@ import gc
 import logging
 from abc import ABC, abstractmethod
 from typing import Tuple
-
+from .utils import seed_everything
 import pandas as pd
 
 __author__ = "Insaf Ashrapov"
@@ -43,6 +43,7 @@ class SampleData(ABC):
         Only works for SamplerGAN.
         @return: Newly generated train dataframe and test data
         """
+        seed_everything()
         generator = self.get_object_generator()
         if deep_copy:
             logging.info("Preprocessing input data with deep copying input data.")

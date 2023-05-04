@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-"""todo write description"""
 
 import gc
 import logging
@@ -14,7 +13,7 @@ from tabgan.abc_sampler import Sampler, SampleData
 from tabgan.adversarial_model import AdversarialModel
 from tabgan.utils import setup_logging, get_year_mnth_dt_from_date, collect_dates
 
-warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore")
 
 __author__ = "Insaf Ashrapov"
 __copyright__ = "Insaf Ashrapov"
