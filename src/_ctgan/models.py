@@ -41,7 +41,7 @@ class Discriminator(Module):
 
     def forward(self, input):
         if input.size()[0] % self.pack != 0:
-            raise AssertionError
+            raise ValueError("Batch size should be divisible to {}, but provided {}".format(self.pack, input.size()[0], ))
         return self.seq(input.view(-1, self.packdim))
 
 

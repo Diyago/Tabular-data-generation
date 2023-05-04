@@ -187,7 +187,7 @@ class _CTGANSynthesizer:
         optimizerD = optim.Adam(discriminator.parameters(), lr=2e-4, betas=(0.5, 0.9))
 
         if self.batch_size % 2 != 0:
-            raise AssertionError
+            raise ValueError("batch_size should even, but {} is provided".format(self.batch_size))
         mean = torch.zeros(self.batch_size, self.embedding_dim, device=self.device)
         std = mean + 1
 
