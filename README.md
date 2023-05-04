@@ -5,7 +5,7 @@
 # GANs for tabular  data
 
 <img src="./images/tabular_gan.png" height="15%" width="15%">
-We well know GANs for success in the realistic image generation. However, they can be applied in tabular data generation. We will review and examine some recent papers about tabular GANs in action.
+Generative Adversarial Networks (GANs) are well-known for their success in realistic image generation. However, they can also be applied to generate tabular data. Here will give opportunity to try some of them.
 
 * Arxiv article: ["Tabular GANs for uneven distribution"](https://arxiv.org/abs/2010.00638)
 * Medium post: [GANs for tabular data](https://towardsdatascience.com/review-of-gans-for-tabular-data-a30a2199342)
@@ -140,13 +140,7 @@ to **T_test**, without using ground truth labels.
 
 **Experiment design**
 
-Let say we have **T_train** and **T_test** (train and test set respectively). The size of **T_train** is smaller and
-might have different data distribution. First of all, we train CTGAN on **T_train** with ground truth labels (step 1),
-then generate additional data **T_synth** (step 2). Secondly, we train boosting in an adversarial way on concatenated **
-T_train** and **T_synth** (target set to 0) with **T_test** (target set to 1) (steps 3 & 4). The goal is to apply newly
-trained adversarial boosting to obtain rows more like **T_test**. Note - initial ground truth labels aren"t used for
-adversarial training. As a result, we take top rows from **T_train** and **T_synth** sorted by correspondence to **
-T_test** (steps 5 & 6), and train new boosting on them and check results on **T_test**.
+In the case of having a smaller **T_train** and a different data distribution, we can use CTGAN to generate additional data **T_synth**. First, we train CTGAN on **T_train** with ground truth labels (step 1), then generate additional data **T_synth** (step 2). Secondly, we train boosting in an adversarial way on concatenated **T_train** and **T_synth** (target set to 0) with **T_test** (target set to 1) (steps 3 & 4). The goal is to apply the newly trained adversarial boosting to obtain rows more like **T_test**. Note that initial ground truth labels aren't used for adversarial training. As a result, we take top rows from **T_train** and **T_synth** sorted by correspondence to **T_test** (steps 5 & 6), and train new boosting on them and check results on **T_test**.
 
 ![Experiment design and workflow](./images/workflow.png?raw=true)
 

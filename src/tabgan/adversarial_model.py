@@ -18,7 +18,7 @@ class AdversarialModel:
             model_params=None,
     ):
         '''
-        Class for fit predicting tabular models, mostly - boostings. Several encoders for categorical features are
+        Class for fit predicting tabular models, mostly - boosting. Several encoders for categorical features are
         supported
 
         Args:
@@ -27,7 +27,7 @@ class AdversarialModel:
             cat_cols: list of categorical columns
             model_validation: model training cross validation type from sklearn.model_selection,
             example StratifiedKFold(5)
-            model_params: model training hyperparameters
+            model_params: model training hyper-parameters
         '''
         self.cat_validation = cat_validation
         self.encoders_names = encoders_names
@@ -79,14 +79,14 @@ class Model:
             model_params=None,
     ):
         '''
-        Class for fit predicting tabular models, mostly - boostings. Several encoders for categorical features are supported
+        Class for fit predicting tabular models, mostly - boosting. Several encoders for categorical features are supported
 
         Args:
             cat_validation: categorical type of validation, examples: "None", "Single" and "Double"
             encoders_names: different categorical encoders from category_encoders library, example CatBoostEncoder
             cat_cols: list of categorical columns
             model_validation: model training cross validation type from sklearn.model_selection, example StratifiedKFold(5)
-            model_params: model training hyperparameters
+            model_params: model training hyper-parameters
         '''
         self.cat_validation = cat_validation
         self.encoders_names = encoders_names
