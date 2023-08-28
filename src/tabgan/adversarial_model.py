@@ -78,16 +78,18 @@ class Model:
             model_validation=StratifiedKFold(n_splits=5, shuffle=True, random_state=42),
             model_params=None,
     ):
-        '''
-        Class for fit predicting tabular models, mostly - boosting. Several encoders for categorical features are supported
+        """
+        Class for fit predicting tabular models, mostly - boosting. Several encoders for categorical features are
+        supported
 
         Args:
             cat_validation: categorical type of validation, examples: "None", "Single" and "Double"
             encoders_names: different categorical encoders from category_encoders library, example CatBoostEncoder
             cat_cols: list of categorical columns
-            model_validation: model training cross validation type from sklearn.model_selection, example StratifiedKFold(5)
-            model_params: model training hyper-parameters
-        '''
+            model_validation: model training cross validation type from sklearn.model_selection, example
+            StratifiedKFold(5)
+            model_params: model training hyperparameters
+        """
         self.cat_validation = cat_validation
         self.encoders_names = encoders_names
         self.cat_cols = cat_cols
@@ -111,7 +113,7 @@ class Model:
 
     def fit(self, X: pd.DataFrame, y: np.array) -> tuple:
         """
-        Fits model with speficified in init params
+        Fits model with specified in init params
         Args:
             X: Input training dataframe
             y: Target for X
@@ -176,7 +178,11 @@ class Model:
 
         mean_score_train = np.mean(self.scores_list_train)
         mean_score_val = np.mean(self.scores_list_val)
-        avg_num_trees = int(np.mean(self.models_trees))
+        if None in self.models_trees:
+            # calling without early-stopping returns Nones as best_iteration
+            avg_num_trees = None
+        else:
+            avg_num_trees = int(np.mean(self.models_trees))
 
         return mean_score_train, mean_score_val, avg_num_trees
 
