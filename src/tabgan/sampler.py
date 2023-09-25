@@ -7,6 +7,7 @@ from typing import Tuple
 
 import numpy as np
 import pandas as pd
+from ForestDiffusion import ForestDiffusionModel
 
 from _ctgan.synthesizer import _CTGANSynthesizer as CTGAN
 from tabgan.abc_sampler import Sampler, SampleData
@@ -19,7 +20,7 @@ __author__ = "Insaf Ashrapov"
 __copyright__ = "Insaf Ashrapov"
 __license__ = "Apache 2.0"
 
-__all__ = ["OriginalGenerator", "GANGenerator"]
+__all__ = ["OriginalGenerator", "GANGenerator", "ForestDiffusionGenerator"]
 
 
 class OriginalGenerator(SampleData):
@@ -38,6 +39,15 @@ class GANGenerator(SampleData):
 
     def get_object_generator(self) -> Sampler:
         return SamplerGAN(*self.args, **self.kwargs)
+
+
+class ForestDiffusionGenerator(SampleData):
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+
+    def get_object_generator(self) -> Sampler:
+        return SamplerDiffusion(*self.args, **self.kwargs)
 
 
 class SamplerOriginal(Sampler):
@@ -286,6 +296,66 @@ class SamplerGAN(SamplerOriginal):
         )
 
 
+class SamplerDiffusion(SamplerOriginal):
+    def generate_data(
+            self, train_df, target, test_df, only_generated_data: bool
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        self._validate_data(train_df, target, test_df)
+        if target is not None:
+            train_df[self.TEMP_TARGET] = target
+        logging.info("Fitting ForestDiffusion model")
+
+        if self.cat_cols is None:
+            forest_model = ForestDiffusionModel(train_df, label_y=self.TEMP_TARGET, n_t=50,
+                                                duplicate_K=self.gen_x_times * train_df.shape[0],
+                                                diffusion_type='flow', n_jobs=-1)
+        else:
+            forest_model = ForestDiffusionModel(train_df, label_y=self.TEMP_TARGET, n_t=50,
+                                                duplicate_K=self.gen_x_times * train_df.shape[0],
+                                                cat_indexes=self.get_column_indexes(train_df, self.cat_cols),
+                                                diffusion_type='flow', n_jobs=-1)
+        logging.info("Finished training GAN")
+        generated_df = forest_model.generate(batch_size=train_df.shape[0])
+        data_dtype = train_df.dtypes.values
+
+        for i in range(len(generated_df.columns)):
+            generated_df[generated_df.columns[i]] = generated_df[
+                generated_df.columns[i]
+            ].astype(data_dtype[i])
+        gc.collect()
+        if not only_generated_data:
+            train_df = pd.concat([train_df, generated_df]).reset_index(drop=True)
+            logging.info(
+                "Generated shapes: {} plus target".format(
+                    _drop_col_if_exist(train_df, self.TEMP_TARGET).shape
+                )
+            )
+            return (
+                _drop_col_if_exist(train_df, self.TEMP_TARGET),
+                get_columns_if_exists(train_df, self.TEMP_TARGET),
+            )
+        else:
+            logging.info(
+                "Generated shapes: {} plus target".format(
+                    _drop_col_if_exist(train_df, self.TEMP_TARGET).shape
+                )
+            )
+            return (
+                _drop_col_if_exist(generated_df, self.TEMP_TARGET),
+                get_columns_if_exists(generated_df, self.TEMP_TARGET),
+            )
+        gc.collect()
+
+        return (
+            _drop_col_if_exist(train_df, self.TEMP_TARGET),
+            get_columns_if_exists(train_df, self.TEMP_TARGET),
+        )
+
+    @staticmethod
+    def get_column_indexes(df, column_names):
+        return [df.columns.get_loc(col) for col in column_names]
+
+
 def _sampler(creator: SampleData, in_train, in_target, in_test) -> None:
     _logger = logging.getLogger(__name__)
     _logger.info("Starting generating data")
@@ -322,7 +392,7 @@ if __name__ == "__main__":
     _sampler(OriginalGenerator(gen_x_times=15), train, target, test)
     _sampler(
         GANGenerator(gen_x_times=10, only_generated_data=False,
-                     gan_params={"batch_size": 500, "patience": 25, "epochs" : 500,}), train, target, test
+                     gan_params={"batch_size": 500, "patience": 25, "epochs": 500, }), train, target, test
     )
 
     _sampler(OriginalGenerator(gen_x_times=15), train, None, train)
