@@ -68,7 +68,7 @@ class SamplerOriginal(Sampler):
             },
             pregeneration_frac: float = 2,
             only_generated_data: bool = False,
-            gan_params: dict = {'batch_size': 500, 'patience': 25, "epochs": 500, }
+            gen_params: dict = {'batch_size': 500, 'patience': 25, "epochs": 500, }
     ):
         """
 
@@ -84,7 +84,7 @@ class SamplerOriginal(Sampler):
         will generated. However in postprocessing (1 + gen_x_times) % of original data will be returned
         @param only_generated_data: bool = False If True after generation get only newly generated, without
         concating input train dataframe.
-        @param gan_params: dict params for GAN training
+        @param gen_params: dict params for GAN training
         Only works for SamplerGAN.
         """
         self.gen_x_times = gen_x_times
@@ -95,7 +95,7 @@ class SamplerOriginal(Sampler):
         self.adversarial_model_params = adversarial_model_params
         self.pregeneration_frac = pregeneration_frac
         self.only_generated_data = only_generated_data
-        self.gan_params = gan_params
+        self.gen_params = gen_params
         self.TEMP_TARGET = "TEMP_TARGET"
 
     @staticmethod
@@ -250,12 +250,12 @@ class SamplerGAN(SamplerOriginal):
         self._validate_data(train_df, target, test_df)
         if target is not None:
             train_df[self.TEMP_TARGET] = target
-        ctgan = CTGAN(batch_size=self.gan_params["batch_size"], patience=self.gan_params["patience"])
+        ctgan = CTGAN(batch_size=self.gen_params["batch_size"], patience=self.gen_params["patience"])
         logging.info("training GAN")
         if self.cat_cols is None:
-            ctgan.fit(train_df, [], epochs=self.gan_params["epochs"])
+            ctgan.fit(train_df, [], epochs=self.gen_params["epochs"])
         else:
-            ctgan.fit(train_df, self.cat_cols, epochs=self.gan_params["epochs"])
+            ctgan.fit(train_df, self.cat_cols, epochs=self.gen_params["epochs"])
         logging.info("Finished training GAN")
         generated_df = ctgan.sample(
             self.pregeneration_frac * self.get_generated_shape(train_df)
@@ -303,6 +303,8 @@ class SamplerDiffusion(SamplerOriginal):
         self._validate_data(train_df, target, test_df)
         if target is not None:
             train_df[self.TEMP_TARGET] = target
+        else:
+            self.TEMP_TARGET = None
         logging.info("Fitting ForestDiffusion model")
 
         if self.cat_cols is None:
@@ -391,21 +393,11 @@ if __name__ == "__main__":
     test = pd.DataFrame(np.random.randint(0, 100, size=(train_size, 4)), columns=list("ABCD"))
     _sampler(OriginalGenerator(gen_x_times=15), train, target, test)
     _sampler(
-        GANGenerator(gen_x_times=10, only_generated_data=False,
-                     gan_params={"batch_size": 500, "patience": 25, "epochs": 500, }), train, target, test
-    )
-
-    _sampler(OriginalGenerator(gen_x_times=15), train, None, train)
-    _sampler(
-        GANGenerator(cat_cols=["A"], gen_x_times=20, only_generated_data=True),
+        ForestDiffusionGenerator(cat_cols=["A"], gen_x_times=2, only_generated_data=True),
         train,
         None,
         train,
     )
-    min_date = pd.to_datetime('2019-01-01')
-    max_date = pd.to_datetime('2021-12-31')
-
-    d = (max_date - min_date).days + 1
 
     train['Date'] = min_date + pd.to_timedelta(np.random.randint(d, size=train_size), unit='d')
     train = get_year_mnth_dt_from_date(train, 'Date')
