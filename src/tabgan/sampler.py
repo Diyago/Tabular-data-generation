@@ -7,7 +7,7 @@ from typing import Tuple
 
 import numpy as np
 import pandas as pd
-from ForestDiffusion import ForestDiffusionModel
+from _ForestDiffusion import ForestDiffusionModel
 
 from _ctgan.synthesizer import _CTGANSynthesizer as CTGAN
 from tabgan.abc_sampler import Sampler, SampleData
@@ -309,15 +309,16 @@ class SamplerDiffusion(SamplerOriginal):
 
         if self.cat_cols is None:
             forest_model = ForestDiffusionModel(train_df, label_y=self.TEMP_TARGET, n_t=50,
-                                                duplicate_K=self.gen_x_times * train_df.shape[0],
+                                                duplicate_K=100,
                                                 diffusion_type='flow', n_jobs=-1)
         else:
             forest_model = ForestDiffusionModel(train_df, label_y=self.TEMP_TARGET, n_t=50,
-                                                duplicate_K=self.gen_x_times * train_df.shape[0],
-                                                cat_indexes=self.get_column_indexes(train_df, self.cat_cols),
+                                                duplicate_K=100,
+                                                # todo fix bug with cat cols
+                                                #cat_indexes=self.get_column_indexes(train_df, self.cat_cols),
                                                 diffusion_type='flow', n_jobs=-1)
-        logging.info("Finished training GAN")
-        generated_df = forest_model.generate(batch_size=train_df.shape[0])
+        logging.info("Finished training ForestDiffusionModel")
+        generated_df = forest_model.generate(batch_size=int(self.gen_x_times*train_df.shape[0]))
         data_dtype = train_df.dtypes.values
 
         for i in range(len(generated_df.columns)):
