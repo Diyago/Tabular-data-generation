@@ -157,28 +157,6 @@ among the dataset.
 | poverty_A              |           0.937 |          **0.950** |                      0.933 |
 | taxi                   |           0.966 |          0.938 |                      **0.987** |
 | adult                  |           0.995 |          0.967 |                      **0.998** |
-| telecom                |           **0.995** |          0.868 |                      0.992 |
-
-**Table 1.3** Different sampling results, higher is better for a mean (ROC AUC), lower is better for std (100% - maximum
-per dataset ROC AUC)
-
-| sample_type     |     mean |       std |
-|:----------------|---------:|----------:|
-| None            | 0.980 | 0.036 |
-| gan             | 0.969 | 0.06 |
-| sample_original | **0.981** | **0.032** |
-
-**Table 1.4** same_target_prop is equal 1 then the target rate for train and test are different no more than 5%. Higher
-is better.
-
-| sample_type     |   same_target_prop |   prop_test_score |
-|:----------------|-------------------:|------------------:|
-| None            |                  0 |          0.964 |
-| None            |                  1 |          0.985 |
-| gan             |                  0 |          0.966 |
-| gan             |                  1 |          0.945 |
-| sample_original |                  0 |          0.973 |
-| sample_original |                  1 |          0.984 |
 
 ## Acknowledgments
 
