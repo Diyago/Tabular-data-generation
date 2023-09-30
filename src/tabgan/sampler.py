@@ -7,6 +7,7 @@ from typing import Tuple
 
 import numpy as np
 import pandas as pd
+from _ForestDiffusion import ForestDiffusionModel
 
 from _ctgan.synthesizer import _CTGANSynthesizer as CTGAN
 from tabgan.abc_sampler import Sampler, SampleData
@@ -19,7 +20,7 @@ __author__ = "Insaf Ashrapov"
 __copyright__ = "Insaf Ashrapov"
 __license__ = "Apache 2.0"
 
-__all__ = ["OriginalGenerator", "GANGenerator"]
+__all__ = ["OriginalGenerator", "GANGenerator", "ForestDiffusionGenerator"]
 
 
 class OriginalGenerator(SampleData):
@@ -40,6 +41,15 @@ class GANGenerator(SampleData):
         return SamplerGAN(*self.args, **self.kwargs)
 
 
+class ForestDiffusionGenerator(SampleData):
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+
+    def get_object_generator(self) -> Sampler:
+        return SamplerDiffusion(*self.args, **self.kwargs)
+
+
 class SamplerOriginal(Sampler):
     def __init__(
             self,
@@ -58,7 +68,7 @@ class SamplerOriginal(Sampler):
             },
             pregeneration_frac: float = 2,
             only_generated_data: bool = False,
-            gan_params: dict = {'batch_size': 500, 'patience': 25, "epochs": 500, }
+            gen_params: dict = {'batch_size': 500, 'patience': 25, "epochs": 500, }
     ):
         """
 
@@ -74,7 +84,7 @@ class SamplerOriginal(Sampler):
         will generated. However in postprocessing (1 + gen_x_times) % of original data will be returned
         @param only_generated_data: bool = False If True after generation get only newly generated, without
         concating input train dataframe.
-        @param gan_params: dict params for GAN training
+        @param gen_params: dict params for GAN training
         Only works for SamplerGAN.
         """
         self.gen_x_times = gen_x_times
@@ -85,7 +95,7 @@ class SamplerOriginal(Sampler):
         self.adversarial_model_params = adversarial_model_params
         self.pregeneration_frac = pregeneration_frac
         self.only_generated_data = only_generated_data
-        self.gan_params = gan_params
+        self.gen_params = gen_params
         self.TEMP_TARGET = "TEMP_TARGET"
 
     @staticmethod
@@ -240,12 +250,12 @@ class SamplerGAN(SamplerOriginal):
         self._validate_data(train_df, target, test_df)
         if target is not None:
             train_df[self.TEMP_TARGET] = target
-        ctgan = CTGAN(batch_size=self.gan_params["batch_size"], patience=self.gan_params["patience"])
+        ctgan = CTGAN(batch_size=self.gen_params["batch_size"], patience=self.gen_params["patience"])
         logging.info("training GAN")
         if self.cat_cols is None:
-            ctgan.fit(train_df, [], epochs=self.gan_params["epochs"])
+            ctgan.fit(train_df, [], epochs=self.gen_params["epochs"])
         else:
-            ctgan.fit(train_df, self.cat_cols, epochs=self.gan_params["epochs"])
+            ctgan.fit(train_df, self.cat_cols, epochs=self.gen_params["epochs"])
         logging.info("Finished training GAN")
         generated_df = ctgan.sample(
             self.pregeneration_frac * self.get_generated_shape(train_df)
@@ -286,6 +296,70 @@ class SamplerGAN(SamplerOriginal):
         )
 
 
+class SamplerDiffusion(SamplerOriginal):
+    def generate_data(
+            self, train_df, target, test_df, only_generated_data: bool
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        self._validate_data(train_df, target, test_df)
+        if target is not None:
+            train_df[self.TEMP_TARGET] = target
+        else:
+            self.TEMP_TARGET = None
+        logging.info("Fitting ForestDiffusion model")
+        if self.cat_cols is None:
+            forest_model = ForestDiffusionModel(train_df.to_numpy(), label_y=None, n_t=50,
+                                                duplicate_K=100,
+                                                diffusion_type='flow', n_jobs=-1)
+        else:
+            forest_model = ForestDiffusionModel(train_df.to_numpy(), label_y=None, n_t=50,
+                                                duplicate_K=100,
+                                                # todo fix bug with cat cols
+                                                #cat_indexes=self.get_column_indexes(train_df, self.cat_cols),
+                                                diffusion_type='flow', n_jobs=-1)
+        logging.info("Finished training ForestDiffusionModel")
+        generated_df = forest_model.generate(batch_size=int(self.gen_x_times*train_df.to_numpy().shape[0]))
+        data_dtype = train_df.dtypes.values
+        generated_df = pd.DataFrame(generated_df)
+        generated_df.columns = train_df.columns
+        for i in range(len(generated_df.columns)):
+            generated_df[generated_df.columns[i]] = generated_df[
+                generated_df.columns[i]
+            ].astype(data_dtype[i])
+        gc.collect()
+        self.TEMP_TARGET = "TEMP_TARGET"
+        if not only_generated_data:
+            train_df = pd.concat([train_df, generated_df]).reset_index(drop=True)
+            logging.info(
+                "Generated shapes: {} plus target".format(
+                    _drop_col_if_exist(train_df, self.TEMP_TARGET).shape
+                )
+            )
+            return (
+                _drop_col_if_exist(train_df, self.TEMP_TARGET),
+                get_columns_if_exists(train_df, self.TEMP_TARGET),
+            )
+        else:
+            logging.info(
+                "Generated shapes: {} plus target".format(
+                    _drop_col_if_exist(train_df, self.TEMP_TARGET).shape
+                )
+            )
+            return (
+                _drop_col_if_exist(generated_df, self.TEMP_TARGET),
+                get_columns_if_exists(generated_df, self.TEMP_TARGET),
+            )
+        gc.collect()
+
+        return (
+            _drop_col_if_exist(train_df, self.TEMP_TARGET),
+            get_columns_if_exists(train_df, self.TEMP_TARGET),
+        )
+
+    @staticmethod
+    def get_column_indexes(df, column_names):
+        return [df.columns.get_loc(col) for col in column_names]
+
+
 def _sampler(creator: SampleData, in_train, in_target, in_test) -> None:
     _logger = logging.getLogger(__name__)
     _logger.info("Starting generating data")
@@ -312,7 +386,7 @@ def get_columns_if_exists(df, col) -> pd.DataFrame:
 
 if __name__ == "__main__":
     setup_logging(logging.DEBUG)
-    train_size = 100
+    train_size = 75
     train = pd.DataFrame(
         np.random.randint(-10, 150, size=(train_size, 4)), columns=list("ABCD")
     )
@@ -322,7 +396,7 @@ if __name__ == "__main__":
     _sampler(OriginalGenerator(gen_x_times=15), train, target, test)
     _sampler(
         GANGenerator(gen_x_times=10, only_generated_data=False,
-                     gan_params={"batch_size": 500, "patience": 25, "epochs" : 500,}), train, target, test
+                     gen_params={"batch_size": 500, "patience": 25, "epochs": 500, }), train, target, test
     )
 
     _sampler(OriginalGenerator(gen_x_times=15), train, None, train)
@@ -332,6 +406,17 @@ if __name__ == "__main__":
         None,
         train,
     )
+    _sampler(
+        ForestDiffusionGenerator(cat_cols=["A"], gen_x_times=1, only_generated_data=True),
+        train,
+        None,
+        train,
+    )
+    _sampler(
+        ForestDiffusionGenerator(gen_x_times=10, only_generated_data=False,
+                     gen_params={"batch_size": 500, "patience": 25, "epochs": 500, }), train, target, test
+    )
+
     min_date = pd.to_datetime('2019-01-01')
     max_date = pd.to_datetime('2021-12-31')
 
