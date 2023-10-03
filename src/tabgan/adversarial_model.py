@@ -17,7 +17,7 @@ class AdversarialModel:
             model_validation=StratifiedKFold(n_splits=5, shuffle=True, random_state=42),
             model_params=None,
     ):
-        '''
+        """
         Class for fit predicting tabular models, mostly - boosting. Several encoders for categorical features are
         supported
 
@@ -27,8 +27,8 @@ class AdversarialModel:
             cat_cols: list of categorical columns
             model_validation: model training cross validation type from sklearn.model_selection,
             example StratifiedKFold(5)
-            model_params: model training hyper-parameters
-        '''
+            model_params: model training hyperparameters
+        """
         self.cat_validation = cat_validation
         self.encoders_names = encoders_names
         self.cat_cols = cat_cols

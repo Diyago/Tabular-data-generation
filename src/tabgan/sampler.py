@@ -84,8 +84,7 @@ class SamplerOriginal(Sampler):
         will generated. However in postprocessing (1 + gen_x_times) % of original data will be returned
         @param only_generated_data: bool = False If True after generation get only newly generated, without
         concating input train dataframe.
-        @param gen_params: dict params for GAN training
-        Only works for SamplerGAN.
+        @param gen_params: dict params for GAN training. Only works for SamplerGAN or ForestDiffusionGenerator.
         """
         self.gen_x_times = gen_x_times
         self.cat_cols = cat_cols
@@ -303,8 +302,6 @@ class SamplerDiffusion(SamplerOriginal):
         self._validate_data(train_df, target, test_df)
         if target is not None:
             train_df[self.TEMP_TARGET] = target
-        else:
-            self.TEMP_TARGET = None
         logging.info("Fitting ForestDiffusion model")
         if self.cat_cols is None:
             forest_model = ForestDiffusionModel(train_df.to_numpy(), label_y=None, n_t=50,
@@ -326,7 +323,6 @@ class SamplerDiffusion(SamplerOriginal):
                 generated_df.columns[i]
             ].astype(data_dtype[i])
         gc.collect()
-        self.TEMP_TARGET = "TEMP_TARGET"
         if not only_generated_data:
             train_df = pd.concat([train_df, generated_df]).reset_index(drop=True)
             logging.info(
