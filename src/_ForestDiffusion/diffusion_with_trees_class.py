@@ -1,6 +1,6 @@
 import math
 import numpy as np
-from ForestDiffusion.utils.diffusion import VPSDE, get_pc_sampler
+from _ForestDiffusion.utils.diffusion import VPSDE, get_pc_sampler
 import copy
 import xgboost as xgb
 from functools import partial
@@ -9,7 +9,7 @@ from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
 from sklearn.preprocessing import MinMaxScaler
 import pandas as pd
-from ForestDiffusion.utils.utils_diffusion import build_data_xt, euler_solve
+from _ForestDiffusion.utils.utils_diffusion import build_data_xt, euler_solve
 from joblib import delayed, Parallel
 
 ## Class for the flow-matching or diffusion model
@@ -23,7 +23,7 @@ class ForestDiffusionModel():
                n_t=50, # number of noise level
                model='xgboost', # xgboost, random_forest, lgbm, catboost
                diffusion_type='flow', # vp, flow (flow is better, but only vp can be used for imputation)
-               max_depth = 7, n_estimators = 100, eta=0.3, # xgboost hyperparameters
+               max_depth=7, n_estimators = 100, eta=0.3, # xgboost hyperparameters
                num_leaves=31, # lgbm hyperparameters
                duplicate_K=100, # number of different noise sample per real data sample
                bin_indexes=[], # vector which indicates which column is binary
