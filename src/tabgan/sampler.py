@@ -62,7 +62,7 @@ class SamplerOriginal(Sampler):
                 "metrics": "AUC",
                 "max_depth": 2,
                 "max_bin": 100,
-                "n_estimators": 500,
+                "n_estimators": 150,
                 "learning_rate": 0.02,
                 "random_state": 42,
             },
