@@ -17,7 +17,7 @@ Generative Adversarial Networks (GANs) are well-known for their success in reali
   call `GANGenerator().generate_data_pipe`:
 
 ``` python
-from tabgan.sampler import OriginalGenerator, GANGenerator
+from tabgan.sampler import OriginalGenerator, GANGenerator, ForestDiffusionGenerator
 import pandas as pd
 import numpy as np
 
@@ -36,7 +36,7 @@ new_train4, new_target4 = GANGenerator(gen_x_times=1.1, cat_cols=None,
            bot_filter_quantile=0.001, top_filter_quantile=0.999, is_post_process=True,
            adversarial_model_params={
                "metrics": "AUC", "max_depth": 2, "max_bin": 100, 
-               "learning_rate": 0.02, "random_state": 42, "n_estimators": 150,
+               "learning_rate": 0.02, "random_state": 42, "n_estimators": 100,
            }, pregeneration_frac=2, only_generated_data=False,
            gen_params = {"batch_size": 500, "patience": 25, "epochs" : 500,}).generate_data_pipe(train, target,
                                           test, deep_copy=True, only_adversarial=False, use_adversarial=True)

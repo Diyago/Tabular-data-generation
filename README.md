@@ -17,7 +17,7 @@ Generative Adversarial Networks (GANs) are well-known for their success in reali
   call `GANGenerator().generate_data_pipe`:
 
 ``` python
-from tabgan.sampler import OriginalGenerator, GANGenerator
+from tabgan.sampler import OriginalGenerator, GANGenerator, ForestDiffusionGenerator
 import pandas as pd
 import numpy as np
 
