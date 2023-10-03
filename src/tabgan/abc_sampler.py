@@ -40,7 +40,7 @@ class SampleData(ABC):
         @param only_adversarial: only adversarial fitering to train dataframe will be performed
         @param use_adversarial: perform or not adversarial filtering
         @param only_generated_data: After generation get only newly generated, without concating input train dataframe.
-        Only works for SamplerGAN.
+        Only works for SamplerGAN or ForestDiffusionGenerator.
         @return: Newly generated train dataframe and test data
         """
         seed_everything()
