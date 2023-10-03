@@ -98,7 +98,7 @@ class Model:
         if model_params is None:
             self.model_params = {
                 "metrics": "AUC",
-                "n_estimators": 5000,
+                "n_estimators": 150,
                 "learning_rate": 0.04,
                 "random_state": 42,
             }
