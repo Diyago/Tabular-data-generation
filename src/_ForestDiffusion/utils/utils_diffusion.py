@@ -1,5 +1,5 @@
 import numpy as np
-from ForestDiffusion.utils.diffusion import VPSDE
+from _ForestDiffusion.utils.diffusion import VPSDE
 
 # Build the dataset of x(t) at multiple values of t 
 def build_data_xt(x0, x1, n_t=101, diffusion_type='flow', eps=1e-3, sde=None):
