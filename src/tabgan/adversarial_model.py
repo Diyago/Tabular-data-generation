@@ -4,6 +4,7 @@ from lightgbm import LGBMClassifier
 from scipy.stats import rankdata
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedKFold
+import warnings
 
 from tabgan.encoders import MultipleEncoder, DoubleValidationEncoderNumerical
 
@@ -122,6 +123,8 @@ class Model:
             mean_score_train, mean_score_val, avg_num_trees
         """
         # process cat cols
+        warnings.filterwarnings("ignore", category=UserWarning)
+
         if self.cat_validation == "None":
             encoder = MultipleEncoder(
                 cols=self.cat_cols, encoders_names_tuple=self.encoders_names

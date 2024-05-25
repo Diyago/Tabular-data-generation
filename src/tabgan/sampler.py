@@ -7,12 +7,12 @@ from typing import Tuple
 
 import numpy as np
 import pandas as pd
+from be_great import GReaT
+import torch
 from _ForestDiffusion import ForestDiffusionModel
-
 from _ctgan.synthesizer import _CTGANSynthesizer as CTGAN
 from tabgan.abc_sampler import Sampler, SampleData
 from tabgan.adversarial_model import AdversarialModel
-from tabgan.utils import setup_logging, get_year_mnth_dt_from_date, collect_dates
 
 warnings.filterwarnings("ignore")
 
@@ -20,7 +20,7 @@ __author__ = "Insaf Ashrapov"
 __copyright__ = "Insaf Ashrapov"
 __license__ = "Apache 2.0"
 
-__all__ = ["OriginalGenerator", "GANGenerator", "ForestDiffusionGenerator"]
+__all__ = ["OriginalGenerator", "GANGenerator", "ForestDiffusionGenerator", "LLMGenerator"]
 
 
 class OriginalGenerator(SampleData):
@@ -48,6 +48,15 @@ class ForestDiffusionGenerator(SampleData):
 
     def get_object_generator(self) -> Sampler:
         return SamplerDiffusion(*self.args, **self.kwargs)
+
+
+class LLMGenerator(SampleData):
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+
+    def get_object_generator(self) -> Sampler:
+        return SamplerLLM(*self.args, **self.kwargs)
 
 
 class SamplerOriginal(Sampler):
@@ -81,9 +90,9 @@ class SamplerOriginal(Sampler):
          and top_filter_quantile ignored
         @param adversarial_model_params: dict params for adversarial filtering model, default values for binary task
         @param pregeneration_frac: float = 2 - for generation step gen_x_times * pregeneration_frac amount of data
-        will generated. However in postprocessing (1 + gen_x_times) % of original data will be returned
+        will be generated. However, in postprocessing (1 + gen_x_times) % of original data will be returned
         @param only_generated_data: bool = False If True after generation get only newly generated, without
-        concating input train dataframe.
+        concatenating input train dataframe.
         @param gen_params: dict params for GAN training. Only works for SamplerGAN or ForestDiffusionGenerator.
         """
         self.gen_x_times = gen_x_times
@@ -311,10 +320,10 @@ class SamplerDiffusion(SamplerOriginal):
             forest_model = ForestDiffusionModel(train_df.to_numpy(), label_y=None, n_t=50,
                                                 duplicate_K=100,
                                                 # todo fix bug with cat cols
-                                                #cat_indexes=self.get_column_indexes(train_df, self.cat_cols),
+                                                # cat_indexes=self.get_column_indexes(train_df, self.cat_cols),
                                                 diffusion_type='flow', n_jobs=-1)
         logging.info("Finished training ForestDiffusionModel")
-        generated_df = forest_model.generate(batch_size=int(self.gen_x_times*train_df.to_numpy().shape[0]))
+        generated_df = forest_model.generate(batch_size=int(self.gen_x_times * train_df.to_numpy().shape[0]))
         data_dtype = train_df.dtypes.values
         generated_df = pd.DataFrame(generated_df)
         generated_df.columns = train_df.columns
@@ -354,6 +363,61 @@ class SamplerDiffusion(SamplerOriginal):
     @staticmethod
     def get_column_indexes(df, column_names):
         return [df.columns.get_loc(col) for col in column_names]
+
+
+class SamplerLLM(SamplerOriginal):
+    def generate_data(
+            self, train_df, target, test_df, only_generated_data: bool
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        self._validate_data(train_df, target, test_df)
+        if target is not None:
+            train_df[self.TEMP_TARGET] = target
+        logging.info("Fitting LLM model")
+        is_fp16 = torch.cuda.is_available()
+        model = GReaT(llm='distilgpt2', batch_size=32, epochs=10, fp16=is_fp16)
+        model.fit(train_df)
+
+        logging.info("Finished training ForestDiffusionModel")
+        if torch.cuda.is_available():
+            device = "cuda"
+        else:
+            device = "cpu"
+        generated_df = model.sample(int(self.gen_x_times * train_df.shape[0]),device=device)
+        data_dtype = train_df.dtypes.values
+        generated_df = pd.DataFrame(generated_df)
+        generated_df.columns = train_df.columns
+        for i in range(len(generated_df.columns)):
+            generated_df[generated_df.columns[i]] = generated_df[
+                generated_df.columns[i]
+            ].astype(data_dtype[i])
+        gc.collect()
+        if not only_generated_data:
+            train_df = pd.concat([train_df, generated_df]).reset_index(drop=True)
+            logging.info(
+                "Generated shapes: {} plus target".format(
+                    _drop_col_if_exist(train_df, self.TEMP_TARGET).shape
+                )
+            )
+            return (
+                _drop_col_if_exist(train_df, self.TEMP_TARGET),
+                get_columns_if_exists(train_df, self.TEMP_TARGET),
+            )
+        else:
+            logging.info(
+                "Generated shapes: {} plus target".format(
+                    _drop_col_if_exist(train_df, self.TEMP_TARGET).shape
+                )
+            )
+            return (
+                _drop_col_if_exist(generated_df, self.TEMP_TARGET),
+                get_columns_if_exists(generated_df, self.TEMP_TARGET),
+            )
+        gc.collect()
+
+        return (
+            _drop_col_if_exist(train_df, self.TEMP_TARGET),
+            get_columns_if_exists(train_df, self.TEMP_TARGET),
+        )
 
 
 def _sampler(creator: SampleData, in_train, in_target, in_test) -> None:
