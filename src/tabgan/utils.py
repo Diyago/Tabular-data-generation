@@ -7,6 +7,8 @@ import numpy as np
 import pandas as pd
 import torch
 
+__all__ = ["compare_dataframes"]
+
 
 def setup_logging(loglevel):
     """Setup basic logging
@@ -61,6 +63,7 @@ def seed_everything(seed=1234):
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
 
+
 def _sampler(creator, in_train, in_target, in_test) -> None:
     _logger = logging.getLogger(__name__)
     _logger.info("Starting generating data")
@@ -83,6 +86,7 @@ def get_columns_if_exists(df, col) -> pd.DataFrame:
         return df[col]
     else:
         return None
+
 
 def compare_dataframes(df1, df2):
     """
@@ -134,9 +138,6 @@ def compare_dataframes(df1, df2):
 
     # Combine Jaccard similarity, missing value penalty, and distribution penalty
     return similarity * missing_values_penalty * chi_squared_penalty
-
-
-
 
 
 TEMP_TARGET = "_temp_target"

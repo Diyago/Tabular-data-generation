@@ -13,7 +13,7 @@ from _ForestDiffusion import ForestDiffusionModel
 from _ctgan.synthesizer import _CTGANSynthesizer as CTGAN
 from tabgan.abc_sampler import Sampler, SampleData
 from tabgan.adversarial_model import AdversarialModel
-from utils import setup_logging, _drop_col_if_exist, \
+from tabgan.utils import setup_logging, _drop_col_if_exist, \
     get_columns_if_exists, _sampler, get_year_mnth_dt_from_date, collect_dates
 
 warnings.filterwarnings("ignore")

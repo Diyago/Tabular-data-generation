@@ -14,7 +14,7 @@
  you should fix that! In order to do that, you should look for uncommitted files: `git status`
 
 4. Uploading project to test PIP:
-`twine upload --repository-url https://test.pypi.org/legacy/ dist/*`
+`twine upload --repository testpypi dist/* --verbose`
    
 5. Uploading project to prod PIP:
 `twine upload --repository-url https://upload.pypi.org/legacy/ dist/*`
