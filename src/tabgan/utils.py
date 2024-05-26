@@ -1,10 +1,10 @@
 import logging
-import sys
 import os
 import random
+import sys
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import torch
 
 
@@ -61,5 +61,27 @@ def seed_everything(seed=1234):
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
 
+def _sampler(creator, in_train, in_target, in_test) -> None:
+    _logger = logging.getLogger(__name__)
+    _logger.info("Starting generating data")
+    train, test = creator.generate_data_pipe(in_train, in_target, in_test)
+    _logger.info(train, test)
+    _logger.info("Finished generation\n")
+    return train, test
+
+
+def _drop_col_if_exist(df, col_to_drop) -> pd.DataFrame:
+    """Drops col_to_drop from input dataframe df if such column exists"""
+    if col_to_drop in df.columns:
+        return df.drop(col_to_drop, axis=1)
+    else:
+        return df
+
+
+def get_columns_if_exists(df, col) -> pd.DataFrame:
+    if col in df.columns:
+        return df[col]
+    else:
+        return None
 
 TEMP_TARGET = "_temp_target"

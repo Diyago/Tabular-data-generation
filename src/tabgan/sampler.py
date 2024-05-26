@@ -1,18 +1,20 @@
 # -*- coding: utf-8 -*-
 
-import gc
 import logging
 import warnings
 from typing import Tuple
 
 import numpy as np
 import pandas as pd
-from be_great import GReaT
 import torch
+from be_great import GReaT
+
 from _ForestDiffusion import ForestDiffusionModel
 from _ctgan.synthesizer import _CTGANSynthesizer as CTGAN
 from tabgan.abc_sampler import Sampler, SampleData
 from tabgan.adversarial_model import AdversarialModel
+from utils import setup_logging, _drop_col_if_exist, \
+    get_columns_if_exists, _sampler, get_year_mnth_dt_from_date, collect_dates
 
 warnings.filterwarnings("ignore")
 
@@ -77,7 +79,7 @@ class SamplerOriginal(Sampler):
             },
             pregeneration_frac: float = 2,
             only_generated_data: bool = False,
-            gen_params: dict = {'batch_size': 500, 'patience': 25, "epochs": 500, }
+            gen_params: dict = {"batch_size": 45, 'patience': 25, "epochs": 50, "llm": "distilgpt2"},
     ):
         """
 
@@ -93,7 +95,8 @@ class SamplerOriginal(Sampler):
         will be generated. However, in postprocessing (1 + gen_x_times) % of original data will be returned
         @param only_generated_data: bool = False If True after generation get only newly generated, without
         concatenating input train dataframe.
-        @param gen_params: dict params for GAN training. Only works for SamplerGAN or ForestDiffusionGenerator.
+        @param gen_params: dict params for GAN training. Only works for SamplerGAN, ForestDiffusionGenerator,
+        LLMGenerator.
         """
         self.gen_x_times = gen_x_times
         self.cat_cols = cat_cols
@@ -149,7 +152,7 @@ class SamplerOriginal(Sampler):
             frac=(1 + self.pregeneration_frac), replace=True, random_state=42
         )
         generated_df = generated_df.reset_index(drop=True)
-        gc.collect()
+
         logging.info(
             "Generated shape: {} and {}".format(
                 generated_df.drop(self.TEMP_TARGET, axis=1).shape,
@@ -196,7 +199,6 @@ class SamplerOriginal(Sampler):
                         "might be highly skewed.".format(num_col)
                     )
                 train_df = filtered_df
-        gc.collect()
         logging.info(
             "Generated shapes after postprocessing: {} plus target".format(
                 train_df.drop(self.TEMP_TARGET, axis=1).shape
@@ -224,7 +226,7 @@ class SamplerOriginal(Sampler):
         train_df.sort_values("test_similarity", ascending=False, inplace=True)
         train_df = train_df.head(self.get_generated_shape(train_df) * train_df.shape[0])
         del ad_model
-        gc.collect()
+
         return (
             train_df.drop(["test_similarity", self.TEMP_TARGET], axis=1).reset_index(
                 drop=True
@@ -274,7 +276,7 @@ class SamplerGAN(SamplerOriginal):
             generated_df[generated_df.columns[i]] = generated_df[
                 generated_df.columns[i]
             ].astype(data_dtype[i])
-        gc.collect()
+
         if not only_generated_data:
             train_df = pd.concat([train_df, generated_df]).reset_index(drop=True)
             logging.info(
@@ -296,7 +298,6 @@ class SamplerGAN(SamplerOriginal):
                 _drop_col_if_exist(generated_df, self.TEMP_TARGET),
                 get_columns_if_exists(generated_df, self.TEMP_TARGET),
             )
-        gc.collect()
 
         return (
             _drop_col_if_exist(train_df, self.TEMP_TARGET),
@@ -331,7 +332,7 @@ class SamplerDiffusion(SamplerOriginal):
             generated_df[generated_df.columns[i]] = generated_df[
                 generated_df.columns[i]
             ].astype(data_dtype[i])
-        gc.collect()
+
         if not only_generated_data:
             train_df = pd.concat([train_df, generated_df]).reset_index(drop=True)
             logging.info(
@@ -353,7 +354,6 @@ class SamplerDiffusion(SamplerOriginal):
                 _drop_col_if_exist(generated_df, self.TEMP_TARGET),
                 get_columns_if_exists(generated_df, self.TEMP_TARGET),
             )
-        gc.collect()
 
         return (
             _drop_col_if_exist(train_df, self.TEMP_TARGET),
@@ -366,23 +366,38 @@ class SamplerDiffusion(SamplerOriginal):
 
 
 class SamplerLLM(SamplerOriginal):
+    def check_params(self):
+        if "llm" not in self.gen_params:
+            logging.warning("llm param is not set for LLM params, so setting it to default ""distilgpt2""")
+            self.gen_params["llm"] = "distilgpt2"
+        if "max_length" not in self.gen_params:
+            logging.warning("max_length param is not set for LLM params, so setting it to default ""500""")
+            self.gen_params["max_length"] = "500"
+
+        if self.gen_params["epochs"] < 3:
+            logging.warning(
+                "Current set epoch = {} for llm training is too low, setting to 3!""".format(
+                    self.gen_params["epochs"]))
+            self.gen_params["epochs"] = 3
+
     def generate_data(
             self, train_df, target, test_df, only_generated_data: bool
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         self._validate_data(train_df, target, test_df)
+        self.check_params()
         if target is not None:
             train_df[self.TEMP_TARGET] = target
         logging.info("Fitting LLM model")
         is_fp16 = torch.cuda.is_available()
-        model = GReaT(llm='distilgpt2', batch_size=32, epochs=10, fp16=is_fp16)
+        model = GReaT(llm=self.gen_params["llm"], batch_size=self.gen_params["batch_size"],
+                      epochs=self.gen_params["epochs"], fp16=is_fp16)
         model.fit(train_df)
 
         logging.info("Finished training ForestDiffusionModel")
-        if torch.cuda.is_available():
-            device = "cuda"
-        else:
-            device = "cpu"
-        generated_df = model.sample(int(self.gen_x_times * train_df.shape[0]),device=device)
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        generated_df = model.sample(int(self.gen_x_times * train_df.shape[0]), device=device,
+                                    max_length=self.gen_params["max_length"])
         data_dtype = train_df.dtypes.values
         generated_df = pd.DataFrame(generated_df)
         generated_df.columns = train_df.columns
@@ -390,7 +405,7 @@ class SamplerLLM(SamplerOriginal):
             generated_df[generated_df.columns[i]] = generated_df[
                 generated_df.columns[i]
             ].astype(data_dtype[i])
-        gc.collect()
+
         if not only_generated_data:
             train_df = pd.concat([train_df, generated_df]).reset_index(drop=True)
             logging.info(
@@ -412,36 +427,11 @@ class SamplerLLM(SamplerOriginal):
                 _drop_col_if_exist(generated_df, self.TEMP_TARGET),
                 get_columns_if_exists(generated_df, self.TEMP_TARGET),
             )
-        gc.collect()
 
         return (
             _drop_col_if_exist(train_df, self.TEMP_TARGET),
             get_columns_if_exists(train_df, self.TEMP_TARGET),
         )
-
-
-def _sampler(creator: SampleData, in_train, in_target, in_test) -> None:
-    _logger = logging.getLogger(__name__)
-    _logger.info("Starting generating data")
-    train, test = creator.generate_data_pipe(in_train, in_target, in_test)
-    _logger.info(train, test)
-    _logger.info("Finished generation\n")
-    return train, test
-
-
-def _drop_col_if_exist(df, col_to_drop) -> pd.DataFrame:
-    """Drops col_to_drop from input dataframe df if such column exists"""
-    if col_to_drop in df.columns:
-        return df.drop(col_to_drop, axis=1)
-    else:
-        return df
-
-
-def get_columns_if_exists(df, col) -> pd.DataFrame:
-    if col in df.columns:
-        return df[col]
-    else:
-        return None
 
 
 if __name__ == "__main__":
@@ -457,6 +447,12 @@ if __name__ == "__main__":
     _sampler(
         GANGenerator(gen_x_times=10, only_generated_data=False,
                      gen_params={"batch_size": 500, "patience": 25, "epochs": 500, }), train, target, test
+    )
+    _sampler(
+        LLMGenerator(gen_params={"batch_size": 32, "epochs": 4, "llm": "distilgpt2",
+                                 "max_length": 500}).generate_data_pipe(train,
+                                                                        target,
+                                                                        test, )
     )
 
     _sampler(OriginalGenerator(gen_x_times=15), train, None, train)
@@ -474,7 +470,8 @@ if __name__ == "__main__":
     )
     _sampler(
         ForestDiffusionGenerator(gen_x_times=10, only_generated_data=False,
-                     gen_params={"batch_size": 500, "patience": 25, "epochs": 500, }), train, target, test
+                                 gen_params={"batch_size": 500, "patience": 25, "epochs": 500,}),
+        train, target, test
     )
 
     min_date = pd.to_datetime('2019-01-01')

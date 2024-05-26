@@ -11,7 +11,6 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(make_two_digit('123'), '123')
 
 
-
 class TestUtils(unittest.TestCase):
     def test_get_year_mnth_dt_from_date(self):
         # create a sample dataframe
