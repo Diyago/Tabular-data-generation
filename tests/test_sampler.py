@@ -8,8 +8,7 @@ from unittest import TestCase
 
 import numpy as np
 import pandas as pd
-
-from src.tabgan.sampler import OriginalGenerator, Sampler, GANGenerator, ForestDiffusionGenerator
+from src.tabgan.sampler import OriginalGenerator, Sampler, GANGenerator, ForestDiffusionGenerator, LLMGenerator
 
 
 class TestOriginalGenerator(TestCase):
@@ -95,12 +94,30 @@ class TestSamplerOriginal(TestCase):
             self.assertTrue(gen_train.shape[0] > new_train.shape[0])
             self.assertEqual(np.max(self.target.nunique()), np.max(new_target.nunique()))
 
-    class TestSamplerGAN(TestCase):
+    class TestSamplerSamplerDiffusion(TestCase):
         def setUp(self):
             self.train = pd.DataFrame(np.random.randint(-10, 150, size=(50, 4)), columns=list('ABCD'))
             self.target = pd.DataFrame(np.random.randint(0, 2, size=(50, 1)), columns=list('Y'))
             self.test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list('ABCD'))
             self.gen = ForestDiffusionGenerator(gen_x_times=15)
+            self.sampler = self.gen.get_object_generator()
+
+        def test_generate_data(self):
+            new_train, new_target, test_df = self.sampler.preprocess_data(self.train.copy(),
+                                                                          self.target.copy(), self.test)
+            gen_train, gen_target = self.sampler.generate_data(new_train, new_target, test_df)
+            self.assertEqual(gen_train.shape[0], gen_target.shape[0])
+            self.assertEqual(np.max(self.target.nunique()), np.max(new_target.nunique()))
+            self.assertTrue(gen_train.shape[0] > new_train.shape[0])
+            self.assertEqual(np.max(self.target.nunique()), np.max(new_target.nunique()))
+
+    class TestSamplerSamplerDiffusion(TestCase):
+        def setUp(self):
+            self.train = pd.DataFrame(np.random.randint(-10, 150, size=(50, 4)), columns=list('ABCD'))
+            self.target = pd.DataFrame(np.random.randint(0, 2, size=(50, 1)), columns=list('Y'))
+            self.test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list('ABCD'))
+            self.gen = LLMGenerator(gen_params={"batch_size": 32, "epochs": 4, "llm": "distilgpt2",
+                                                "max_length": 500})
             self.sampler = self.gen.get_object_generator()
 
         def test_generate_data(self):

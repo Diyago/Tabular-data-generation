@@ -2,10 +2,10 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Downloads](https://pepy.tech/badge/tabgan)](https://pepy.tech/project/tabgan)
 
-# GANs and Diffusions for tabular  data
+# GANs and TimeGANs, Diffusions, LLM for tabular  data
 
 <img src="./images/tabular_gan.png" height="15%" width="15%">
-Generative Adversarial Networks (GANs) are well-known for their success in realistic image generation. However, they can also be applied to generate tabular data. Here will give opportunity to try some of them.
+Generative  Networks are well-known for their success in realistic image generation. However, they can also be applied to generate tabular data. Here will give opportunity to try some of them.
 
 * Arxiv article: ["Tabular GANs for uneven distribution"](https://arxiv.org/abs/2010.00638)
 * Medium post: [GANs for tabular data](https://towardsdatascience.com/review-of-gans-for-tabular-data-a30a2199342)
@@ -17,9 +17,10 @@ Generative Adversarial Networks (GANs) are well-known for their success in reali
   call `GANGenerator().generate_data_pipe`:
 
 ``` python
-from tabgan.sampler import OriginalGenerator, GANGenerator, ForestDiffusionGenerator
+from tabgan.sampler import OriginalGenerator, GANGenerator, ForestDiffusionGenerator, LLMGenerator
 import pandas as pd
 import numpy as np
+
 
 # random input data
 train = pd.DataFrame(np.random.randint(-10, 150, size=(150, 4)), columns=list("ABCD"))
@@ -28,8 +29,10 @@ test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list("ABCD
 
 # generate data
 new_train1, new_target1 = OriginalGenerator().generate_data_pipe(train, target, test, )
-new_train2, new_target2 = GANGenerator().generate_data_pipe(train, target, test, )
+new_train2, new_target2 = GANGenerator(gen_params={"batch_size": 500, "epochs": 10, "patience": 5 }).generate_data_pipe(train, target, test, )
 new_train3, new_target3 = ForestDiffusionGenerator().generate_data_pipe(train, target, test, )
+new_train4, new_target4 = LLMGenerator(gen_params={"batch_size": 32, 
+                                                          "epochs": 4, "llm": "distilgpt2", "max_length": 500}).generate_data_pipe(train, target, test, )
 
 # example with all params defined
 new_train4, new_target4 = GANGenerator(gen_x_times=1.1, cat_cols=None,
@@ -42,10 +45,11 @@ new_train4, new_target4 = GANGenerator(gen_x_times=1.1, cat_cols=None,
                                           test, deep_copy=True, only_adversarial=False, use_adversarial=True)
 ```
 
-All samplers `OriginalGenerator`, `ForestDiffusionGenerator` and `GANGenerator` have same input parameters.
+All samplers `OriginalGenerator`, `ForestDiffusionGenerator`, `LLMGenerator` and `GANGenerator` have same input parameters.
 
 1. **GANGenerator** based on **CTGAN**
-2. **ForestDiffusionGenerator** based on **Forest Diffusion**
+2. **ForestDiffusionGenerator** based on **Forest Diffusion (Tabular Diffusion and Flow-Matching)**
+2. **LLMGenerator** based on **Language Models are Realistic Tabular Data Generators (GReaT framework)**
 
 * **gen_x_times**: float = 1.1 - how much data to generate, output might be less because of postprocessing and
   adversarial filtering
@@ -55,7 +59,7 @@ All samplers `OriginalGenerator`, `ForestDiffusionGenerator` and `GANGenerator` 
 * **is_post_process**: bool = True - perform or not post-filtering, if false bot_filter_quantile and top_filter_quantile
   ignored
 * **adversarial_model_params**: dict params for adversarial filtering model, default values for binary task
-* **pregeneration_frac**: float = 2 - for generataion step gen_x_times * pregeneration_frac amount of data will
+* **pregeneration_frac**: float = 2 - for generation step gen_x_times * pregeneration_frac amount of data will
   generated. However in postprocessing (1 + gen_x_times) % of original data will be returned
 * **gen_params**: dict params for GAN training
 
@@ -65,10 +69,10 @@ For `generate_data_pipe` methods params:
 * **target**: pd.DataFrame Input target for the train dataset
 * **test_df**: pd.DataFrame Test dataframe - newly generated train dataframe should be close to it
 * **deep_copy**: bool = True - make copy of input files or not. If not input dataframes will be overridden
-* **only_adversarial**: bool = False - only adversarial fitering to train dataframe will be performed
+* **only_adversarial**: bool = False - only adversarial filtering to train dataframe will be performed
 * **use_adversarial**: bool = True - perform or not adversarial filtering
 * **only_generated_data**: bool = False  - After generation get only newly generated, without 
-  concating input train dataframe.  
+  concatenating input train dataframe.  
 * **@return**: -> Tuple[pd.DataFrame, pd.DataFrame] - Newly generated train dataframe and test data
 
 Thus, you may use this library to improve your dataset quality:
@@ -126,6 +130,11 @@ new_train = collect_dates(new_train)
 ## Experiments
 ### Datasets and experiment design
 
+**Check for data generation quality**
+Just use built-in function
+```
+compare_dataframes(original_df, generated_df) # return between 0 and 1
+```
 **Running experiment**
 
 To run experiment follow these steps:
@@ -158,11 +167,6 @@ among the dataset.
 | taxi                   |           0.966 |          0.938 |                      **0.987** |
 | adult                  |           0.995 |          0.967 |                      **0.998** |
 
-## Acknowledgments
-
-The author would like to thank Open Data Science community [7] for many valuable discussions and educational help in the
-growing field of machine and deep learning.
-
 ## Citation
 
 If you use **GAN-for-tabular-data** in a scientific publication, we would appreciate references to the following BibTex entry:
@@ -186,3 +190,5 @@ arxiv publication:
 [2] Alexia Jolicoeur-Martineau and Kilian Fatras and Tal Kachman. Generating and Imputing Tabular Data via Diffusion and Flow-based Gradient-Boosted Trees ((2023) https://github.com/SamsungSAILMontreal/ForestDiffusion [cs.LG]
 
 [3] Lei Xu, Maria Skoularidou, Alfredo Cuesta-Infante, Kalyan Veeramachaneni. Modeling Tabular data using Conditional GAN. NeurIPS, (2019)
+
+[4] Vadim Borisov and Kathrin Sessler and Tobias Leemann and Martin Pawelczyk and Gjergji Kasneci. Language Models are Realistic Tabular Data Generators. ICLR, (2023)
