@@ -84,4 +84,59 @@ def get_columns_if_exists(df, col) -> pd.DataFrame:
     else:
         return None
 
+def compare_dataframes(df1, df2):
+    """
+    Compares two DataFrames for similarity
+
+    Args:
+        df1 (pd.DataFrame): The first DataFrame (original)
+        df2 (pd.DataFrame): The second DataFrame (generated)
+
+    Returns:
+        float: A score between 0 and 1 representing the similarity of the two DataFrames
+
+    # Example usage
+    df1 = pd.DataFrame({"col1": [1, 2, 3, 4], "col2": ["a", "b", "a", "c"]})
+    df2 = pd.DataFrame({"col1": [1, 2, 5, 6], "col2": ["a", "b", "x", "y"]})
+
+    similarity_score = compare_dataframes(df1.copy(), df2.copy())
+    print(similarity_score)
+    """
+
+    if df1.shape != df2.shape:
+        # Penalize if DataFrames have different shapes
+        return 0.0
+
+    # Calculate the intersection of unique elements between DataFrames
+    intersection = len(set(df1.values.ravel()) & set(df2.values.ravel()))
+
+    # Calculate the union of unique elements between DataFrames
+    union = len(set(df1.values.ravel()) | set(df2.values.ravel()))
+
+    # Avoid division by zero
+    if union == 0:
+        return 0.0
+
+    # Jaccard similarity score - measure of set similarity
+    similarity = intersection / union
+
+    # Penalize if there are many missing values in generated DataFrame
+    missing_values_penalty = 1 - df2.isnull().sum().sum() / df2.size
+
+    # Penalize if the distribution of values in each column is very different
+    chi_squared_penalty = 0
+    for col in df1.columns:
+        chi_squared_penalty += sum(
+            (observed - expected) ** 2 / (expected + 1)
+            for observed, expected in pd.crosstab(df1[col], df2[col]).fillna(0).to_numpy().ravel()
+        )
+    chi_squared_penalty = np.exp(-chi_squared_penalty)  # Normalize penalty
+
+    # Combine Jaccard similarity, missing value penalty, and distribution penalty
+    return similarity * missing_values_penalty * chi_squared_penalty
+
+
+
+
+
 TEMP_TARGET = "_temp_target"
