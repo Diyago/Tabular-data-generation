@@ -17,9 +17,10 @@ Generative  Networks are well-known for their success in realistic image generat
   call `GANGenerator().generate_data_pipe`:
 
 ``` python
-from tabgan.sampler import OriginalGenerator, GANGenerator, ForestDiffusionGenerator
+from tabgan.sampler import OriginalGenerator, GANGenerator, ForestDiffusionGenerator, LLMGenerator
 import pandas as pd
 import numpy as np
+
 
 # random input data
 train = pd.DataFrame(np.random.randint(-10, 150, size=(150, 4)), columns=list("ABCD"))
@@ -28,10 +29,10 @@ test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list("ABCD
 
 # generate data
 new_train1, new_target1 = OriginalGenerator().generate_data_pipe(train, target, test, )
-new_train2, new_target2 = GANGenerator().generate_data_pipe(train, target, test, )
+new_train2, new_target2 = GANGenerator(gen_params={"batch_size": 500, "epochs": 10, "patience": 5 }).generate_data_pipe(train, target, test, )
 new_train3, new_target3 = ForestDiffusionGenerator().generate_data_pipe(train, target, test, )
-new_train4, new_target4 = LLMGenerator().generate_data_pipe(train, target, test, gen_params={"batch_size": 32, 
-                                                          "epochs": 4, "llm": "distilgpt2", "max_length": 500})
+new_train4, new_target4 = LLMGenerator(gen_params={"batch_size": 32, 
+                                                          "epochs": 4, "llm": "distilgpt2", "max_length": 500}).generate_data_pipe(train, target, test, )
 
 # example with all params defined
 new_train4, new_target4 = GANGenerator(gen_x_times=1.1, cat_cols=None,
@@ -58,7 +59,7 @@ All samplers `OriginalGenerator`, `ForestDiffusionGenerator`, `LLMGenerator` and
 * **is_post_process**: bool = True - perform or not post-filtering, if false bot_filter_quantile and top_filter_quantile
   ignored
 * **adversarial_model_params**: dict params for adversarial filtering model, default values for binary task
-* **pregeneration_frac**: float = 2 - for generataion step gen_x_times * pregeneration_frac amount of data will
+* **pregeneration_frac**: float = 2 - for generation step gen_x_times * pregeneration_frac amount of data will
   generated. However in postprocessing (1 + gen_x_times) % of original data will be returned
 * **gen_params**: dict params for GAN training
 
@@ -68,10 +69,10 @@ For `generate_data_pipe` methods params:
 * **target**: pd.DataFrame Input target for the train dataset
 * **test_df**: pd.DataFrame Test dataframe - newly generated train dataframe should be close to it
 * **deep_copy**: bool = True - make copy of input files or not. If not input dataframes will be overridden
-* **only_adversarial**: bool = False - only adversarial fitering to train dataframe will be performed
+* **only_adversarial**: bool = False - only adversarial filtering to train dataframe will be performed
 * **use_adversarial**: bool = True - perform or not adversarial filtering
 * **only_generated_data**: bool = False  - After generation get only newly generated, without 
-  concating input train dataframe.  
+  concatenating input train dataframe.  
 * **@return**: -> Tuple[pd.DataFrame, pd.DataFrame] - Newly generated train dataframe and test data
 
 Thus, you may use this library to improve your dataset quality:
@@ -129,6 +130,11 @@ new_train = collect_dates(new_train)
 ## Experiments
 ### Datasets and experiment design
 
+**Check for data generation quality**
+Just use built-in function
+```
+compare_dataframes(original_df, generated_df) # return between 0 and 1
+```
 **Running experiment**
 
 To run experiment follow these steps:
@@ -160,11 +166,6 @@ among the dataset.
 | poverty_A              |           0.937 |          **0.950** |                      0.933 |
 | taxi                   |           0.966 |          0.938 |                      **0.987** |
 | adult                  |           0.995 |          0.967 |                      **0.998** |
-
-## Acknowledgments
-
-The author would like to thank Open Data Science community [7] for many valuable discussions and educational help in the
-growing field of machine and deep learning.
 
 ## Citation
 

@@ -6,6 +6,7 @@ import sys
 import numpy as np
 import pandas as pd
 import torch
+from scipy.stats import entropy
 
 __all__ = ["compare_dataframes"]
 
@@ -88,16 +89,17 @@ def get_columns_if_exists(df, col) -> pd.DataFrame:
         return None
 
 
-def compare_dataframes(df1, df2):
+def compare_dataframes(df_original, df_generated):
     """
-    Compares two DataFrames for similarity
+    Compares two DataFrames for similarity in terms of uniqueness, data quality, and PSI.
 
     Args:
-        df1 (pd.DataFrame): The first DataFrame (original)
-        df2 (pd.DataFrame): The second DataFrame (generated)
+      df_original: The original DataFrame.
+      df_generated: The DataFrame with generated numbers.
 
     Returns:
-        float: A score between 0 and 1 representing the similarity of the two DataFrames
+        float: A score between 0 (no similarity) and 1 (high similarity) representing the similarity of the two
+        DataFrames.
 
     # Example usage
     df1 = pd.DataFrame({"col1": [1, 2, 3, 4], "col2": ["a", "b", "a", "c"]})
@@ -107,37 +109,52 @@ def compare_dataframes(df1, df2):
     print(similarity_score)
     """
 
-    if df1.shape != df2.shape:
-        # Penalize if DataFrames have different shapes
-        return 0.0
+    # Handle potential differences in row count
+    n_original = len(df_original)
+    n_generated = len(df_generated)
+    min_rows = min(n_original, n_generated)
 
-    # Calculate the intersection of unique elements between DataFrames
-    intersection = len(set(df1.values.ravel()) & set(df2.values.ravel()))
+    # Uniqueness: Ratio of non-null unique values in generated vs original (weighted by min rows)
+    uniq_original = df_original.nunique().sum() / (len(df_original.columns) + 1e-6)
+    uniq_generated = df_generated.nunique().sum() / (len(df_generated.columns) + 1e-6)
+    uniqueness_score = (uniq_generated / uniq_original) * (min_rows / n_generated)
 
-    # Calculate the union of unique elements between DataFrames
-    union = len(set(df1.values.ravel()) | set(df2.values.ravel()))
+    # Data Quality: Distribution similarity using Kolmogorov-Smirnov test (average across columns)
+    data_quality_scores = []
+    for col in df_original.columns:
+        if col in df_generated.columns:
+            # Ensure both columns have numeric data types before applying K-S test
+            if pd.api.types.is_numeric_dtype(df_original[col]) and pd.api.types.is_numeric_dtype(df_generated[col]):
+                _, p_value = df_original[col].value_counts().sort_index(ascending=False).diff().dropna().abs().sum() / (
+                        n_original + 1e-6), \
+                             df_generated[col].value_counts().sort_index(
+                                 ascending=False).diff().dropna().abs().sum() / (n_generated + 1e-6)
+                # Avoid zero division and set minimum p-value to a small positive value
+                p_value = max(p_value, 1e-6)
+                data_quality_scores.append(p_value)
+    data_quality_score = sum(data_quality_scores) / len(data_quality_scores) if data_quality_scores else 1
 
-    # Avoid division by zero
-    if union == 0:
-        return 0.0
+    # PSI Similarity: Average PSI across all column pairs (capped at theoretical maximum)
+    psi_scores = []
+    for col_orig in df_original.columns:
+        if col_orig in df_generated.columns:
+            p_orig = df_original[col_orig].value_counts(normalize=True)
+            p_gen = df_generated[col_orig].value_counts(normalize=True)
+            # Handle potential division by zero with entropy function (uses log2 internally)
+            h_orig = entropy(p_orig, base=2)
+            h_gen = entropy(p_gen, base=2)
+            h_joint = entropy(pd.concat([p_orig, p_gen], ignore_index=True), base=2)
+            psi = max(0, min(h_orig + h_gen - h_joint, 1))  # Ensure non-negative and cap at 1
+            psi_scores.append(psi)
+    psi_similarity = sum(psi_scores) / len(psi_scores) if psi_scores else 1
 
-    # Jaccard similarity score - measure of set similarity
-    similarity = intersection / union
+    # Combine uniqueness, data quality, and PSI scores (weighted)
+    similarity_score = 0.5 * uniqueness_score + 0.3 * data_quality_score + 0.2 * psi_similarity
 
-    # Penalize if there are many missing values in generated DataFrame
-    missing_values_penalty = 1 - df2.isnull().sum().sum() / df2.size
+    # Ensure score is between 0 and 1
+    similarity_score = min(max(similarity_score, 0), 1)
 
-    # Penalize if the distribution of values in each column is very different
-    chi_squared_penalty = 0
-    for col in df1.columns:
-        chi_squared_penalty += sum(
-            (observed - expected) ** 2 / (expected + 1)
-            for observed, expected in pd.crosstab(df1[col], df2[col]).fillna(0).to_numpy().ravel()
-        )
-    chi_squared_penalty = np.exp(-chi_squared_penalty)  # Normalize penalty
-
-    # Combine Jaccard similarity, missing value penalty, and distribution penalty
-    return similarity * missing_values_penalty * chi_squared_penalty
+    return similarity_score
 
 
 TEMP_TARGET = "_temp_target"

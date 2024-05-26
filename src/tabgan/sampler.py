@@ -254,9 +254,24 @@ class SamplerOriginal(Sampler):
 
 
 class SamplerGAN(SamplerOriginal):
+    def check_params(self):
+        if self.gen_params["batch_size"] % 2 != 0:
+            logging.warning(
+                "batch_size should even, but {} is provided. Increasing by 1".format(self.gen_params["batch_size"]))
+            self.gen_params["batch_size"] = self.gen_params["batch_size"] + 1
+
+        if "patience" not in self.gen_params:
+            logging.warning("patience param is not set for GAN params, so setting it to default ""25""")
+            self.gen_params["patience"] = 25
+
+        if "epochs" not in self.gen_params:
+            logging.warning("patience param is not set for GAN params, so setting it to default ""50""")
+            self.gen_params["epochs"] = 50
+
     def generate_data(
             self, train_df, target, test_df, only_generated_data: bool
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        self.check_params()
         self._validate_data(train_df, target, test_df)
         if target is not None:
             train_df[self.TEMP_TARGET] = target
@@ -470,7 +485,7 @@ if __name__ == "__main__":
     )
     _sampler(
         ForestDiffusionGenerator(gen_x_times=10, only_generated_data=False,
-                                 gen_params={"batch_size": 500, "patience": 25, "epochs": 500,}),
+                                 gen_params={"batch_size": 500, "patience": 25, "epochs": 500, }),
         train, target, test
     )
 
