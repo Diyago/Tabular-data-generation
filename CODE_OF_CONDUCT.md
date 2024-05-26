@@ -17,7 +17,7 @@
 `twine upload --repository testpypi dist/* --verbose`
    
 5. Uploading project to prod PIP:
-`twine upload --repository-url https://upload.pypi.org/legacy/ dist/*`
+`twine upload --repository pypi dist/* --verbose`
 
 # Contributor Covenant Code of Conduct
 
