@@ -2,7 +2,7 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Downloads](https://pepy.tech/badge/tabgan)](https://pepy.tech/project/tabgan)
 
-# GANs and TimeGANs, Diffusions, LLM for tabular  data
+# GANs and TimeGANs, Diffusions, LLM for tabular  data generation
 
 <img src="./images/tabular_gan.png" height="15%" width="15%">
 Generative  Networks are well-known for their success in realistic image generation. However, they can also be applied to generate tabular data. Here will give opportunity to try some of them.
