@@ -4,7 +4,7 @@ numpy>=1.22.0
 torch>=1.6.0
 pandas>=1.2.2
 lightgbm>=2.2.3
-scikit_learn>=1.0.2
+scikit_learn>=1.2.2
 torchvision>=0.4.2
 numpy==1.22.0
 python-dateutil==2.8.1

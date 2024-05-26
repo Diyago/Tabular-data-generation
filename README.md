@@ -2,10 +2,10 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Downloads](https://pepy.tech/badge/tabgan)](https://pepy.tech/project/tabgan)
 
-# GANs and Diffusions for tabular  data
+# GANs and TimeGANs, Diffusions, LLM for tabular  data
 
 <img src="./images/tabular_gan.png" height="15%" width="15%">
-Generative Adversarial Networks (GANs) are well-known for their success in realistic image generation. However, they can also be applied to generate tabular data. Here will give opportunity to try some of them.
+Generative  Networks are well-known for their success in realistic image generation. However, they can also be applied to generate tabular data. Here will give opportunity to try some of them.
 
 * Arxiv article: ["Tabular GANs for uneven distribution"](https://arxiv.org/abs/2010.00638)
 * Medium post: [GANs for tabular data](https://towardsdatascience.com/review-of-gans-for-tabular-data-a30a2199342)
@@ -30,6 +30,8 @@ test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list("ABCD
 new_train1, new_target1 = OriginalGenerator().generate_data_pipe(train, target, test, )
 new_train2, new_target2 = GANGenerator().generate_data_pipe(train, target, test, )
 new_train3, new_target3 = ForestDiffusionGenerator().generate_data_pipe(train, target, test, )
+new_train4, new_target4 = LLMGenerator().generate_data_pipe(train, target, test, gen_params={"batch_size": 32, 
+                                                          "epochs": 4, "llm": "distilgpt2", "max_length": 500})
 
 # example with all params defined
 new_train4, new_target4 = GANGenerator(gen_x_times=1.1, cat_cols=None,
@@ -42,10 +44,11 @@ new_train4, new_target4 = GANGenerator(gen_x_times=1.1, cat_cols=None,
                                           test, deep_copy=True, only_adversarial=False, use_adversarial=True)
 ```
 
-All samplers `OriginalGenerator`, `ForestDiffusionGenerator` and `GANGenerator` have same input parameters.
+All samplers `OriginalGenerator`, `ForestDiffusionGenerator`, `LLMGenerator` and `GANGenerator` have same input parameters.
 
 1. **GANGenerator** based on **CTGAN**
-2. **ForestDiffusionGenerator** based on **Forest Diffusion**
+2. **ForestDiffusionGenerator** based on **Forest Diffusion (Tabular Diffusion and Flow-Matching)**
+2. **LLMGenerator** based on **Language Models are Realistic Tabular Data Generators (GReaT framework)**
 
 * **gen_x_times**: float = 1.1 - how much data to generate, output might be less because of postprocessing and
   adversarial filtering
@@ -186,3 +189,5 @@ arxiv publication:
 [2] Alexia Jolicoeur-Martineau and Kilian Fatras and Tal Kachman. Generating and Imputing Tabular Data via Diffusion and Flow-based Gradient-Boosted Trees ((2023) https://github.com/SamsungSAILMontreal/ForestDiffusion [cs.LG]
 
 [3] Lei Xu, Maria Skoularidou, Alfredo Cuesta-Infante, Kalyan Veeramachaneni. Modeling Tabular data using Conditional GAN. NeurIPS, (2019)
+
+[4] Vadim Borisov and Kathrin Sessler and Tobias Leemann and Martin Pawelczyk and Gjergji Kasneci. Language Models are Realistic Tabular Data Generators. ICLR, (2023)
