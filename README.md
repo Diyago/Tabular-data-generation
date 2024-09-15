@@ -137,15 +137,6 @@ compare_dataframes(original_df, generated_df) # return between 0 and 1
 ```
 **Running experiment**
 
-To run experiment follow these steps:
-
-1. Clone the repository. All required dataset are stored in `./Research/data` folder
-2. Install requirements `pip install -r requirements.txt`
-4. Run all experiments  `python ./Research/run_experiment.py`. Run all experiments  `python run_experiment.py`. You may
-   add more datasets, adjust validation type and categorical encoders.
-5. Observe metrics across all experiment in console or in `./Research/results/fit_predict_scores.txt`
-
-
 **Experiment design**
 
 ![Experiment design and workflow](./images/workflow.png?raw=true)
