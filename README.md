@@ -1,12 +1,12 @@
-[![CodeFactor](https://www.codefactor.io/repository/github/diyago/tabular-data-generation/badge)](https://www.codefactor.io/repository/github/diyago/tabular-data-generation)
+[![CodeFactor](https://www.codefactor.io/repository/github/diyago/gan-for-tabular-data/badge)](https://www.codefactor.io/repository/github/diyago/gan-for-tabular-data)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Downloads](https://pepy.tech/badge/tabgan)](https://pepy.tech/project/tabgan)
 
-# GANs and TimeGANs, Diffusions, LLM for tabular  data generation
+# GANs and TimeGANs, Diffusions, LLM for tabular  data
 
 <img src="./images/tabular_gan.png" height="15%" width="15%">
-Generative  Networks are well-known for their success in realistic image generation. However, they can also be applied to generate tabular data. Here will give opportunity to try some of them.
 
+Generative  Networks are well-known for their success in realistic image generation. However, they can also be applied to generate tabular data. We introduce major improvements for generating high-fidelity tabular data giving oppotunity to try GANS, TimeGANs, Diffusions and LLM for tabular data generations. 
 * Arxiv article: ["Tabular GANs for uneven distribution"](https://arxiv.org/abs/2010.00638)
 * Medium post: [GANs for tabular data](https://towardsdatascience.com/review-of-gans-for-tabular-data-a30a2199342)
 
@@ -15,6 +15,17 @@ Generative  Networks are well-known for their success in realistic image generat
 * Installation: `pip install tabgan`
 * To generate new data to train by sampling and then filtering by adversarial training
   call `GANGenerator().generate_data_pipe`:
+
+### Data Format
+
+TabGAN accepts data as a ```numpy.ndarray``` or ```pandas.DataFrame``` with columns categorized as:
+
+* **Continuous Columns**: Numerical columns with any possible value.
+* **Discrete Columns**: Columns with a limited set of values (e.g., categorical data).
+
+Note: TabGAN does not differentiate between floats and integers, so all values are treated as floats. For integer requirements, round the output outside of TabGAN.
+
+### Example code 
 
 ``` python
 from tabgan.sampler import OriginalGenerator, GANGenerator, ForestDiffusionGenerator, LLMGenerator
@@ -60,7 +71,7 @@ All samplers `OriginalGenerator`, `ForestDiffusionGenerator`, `LLMGenerator` and
   ignored
 * **adversarial_model_params**: dict params for adversarial filtering model, default values for binary task
 * **pregeneration_frac**: float = 2 - for generation step gen_x_times * pregeneration_frac amount of data will
-  generated. However in postprocessing (1 + gen_x_times) % of original data will be returned
+  be generated. However, in postprocessing (1 + gen_x_times) % of original data will be returned
 * **gen_params**: dict params for GAN training
 
 For `generate_data_pipe` methods params:
@@ -136,6 +147,15 @@ Just use built-in function
 compare_dataframes(original_df, generated_df) # return between 0 and 1
 ```
 **Running experiment**
+
+To run experiment follow these steps:
+
+1. Clone the repository. All required dataset are stored in `./Research/data` folder
+2. Install requirements `pip install -r requirements.txt`
+4. Run all experiments  `python ./Research/run_experiment.py`. Run all experiments  `python run_experiment.py`. You may
+   add more datasets, adjust validation type and categorical encoders.
+5. Observe metrics across all experiment in console or in `./Research/results/fit_predict_scores.txt`
+
 
 **Experiment design**
 

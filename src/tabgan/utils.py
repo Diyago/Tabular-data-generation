@@ -9,6 +9,7 @@ import torch
 from scipy.stats import entropy
 
 __all__ = ["compare_dataframes"]
+TEMP_TARGET = "_temp_target"
 
 
 def setup_logging(loglevel):
@@ -27,10 +28,10 @@ def make_two_digit(num_as_str: str) -> pd.DataFrame:
     if len(num_as_str) == 2:
         return num_as_str
     else:
-        return '0' + num_as_str
+        return "0" + num_as_str
 
 
-def get_year_mnth_dt_from_date(df: pd.DataFrame, date_col='Date') -> pd.DataFrame:
+def get_year_mnth_dt_from_date(df: pd.DataFrame, date_col="Date") -> pd.DataFrame:
     """
     Extracts year, month, and day from a date column in a pandas DataFrame.
 
@@ -42,23 +43,23 @@ def get_year_mnth_dt_from_date(df: pd.DataFrame, date_col='Date') -> pd.DataFram
         pd.DataFrame: DataFrame with year, month, and day columns added.
     """
     df[date_col] = pd.to_datetime(df[date_col])
-    df['year'] = df[date_col].dt.year
-    df['month'] = df[date_col].dt.month
-    df['day'] = df[date_col].dt.day
+    df["year"] = df[date_col].dt.year
+    df["month"] = df[date_col].dt.month
+    df["day"] = df[date_col].dt.day
     return df
 
 
 def collect_dates(df: pd.DataFrame) -> pd.DataFrame:
-    df["Date"] = df['year'].astype(str) + '-' \
-                 + df['month'].astype(str).apply(make_two_digit) + '-' \
-                 + df['day'].astype(str).apply(make_two_digit)
-    df.drop(['year', 'month', 'day'], axis=1, inplace=True)
+    df["Date"] = df["year"].astype(str) + "-" \
+                 + df["month"].astype(str).apply(make_two_digit) + "-" \
+                 + df["day"].astype(str).apply(make_two_digit)
+    df.drop(["year", "month", "day"], axis=1, inplace=True)
     return df
 
 
 def seed_everything(seed=1234):
     random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
@@ -69,7 +70,7 @@ def _sampler(creator, in_train, in_target, in_test) -> None:
     _logger = logging.getLogger(__name__)
     _logger.info("Starting generating data")
     train, test = creator.generate_data_pipe(in_train, in_target, in_test)
-    _logger.info(train, test)
+    _logger.info(f"Train Data: {train}\nTest Data: {test}")
     _logger.info("Finished generation\n")
     return train, test
 
@@ -87,6 +88,88 @@ def get_columns_if_exists(df, col) -> pd.DataFrame:
         return df[col]
     else:
         return None
+
+
+def calculate_psi(expected, actual, buckettype="bins", buckets=10, axis=0):
+    """Calculate the PSI (population stability index) across all variables
+
+    Args:
+       expected: numpy matrix of original values
+       actual: numpy matrix of new values
+       buckettype: type of strategy for creating buckets, bins splits into even splits, quantiles splits into quantile buckets
+       buckets: number of quantiles to use in bucketing variables
+       axis: axis by which variables are defined, 0 for vertical, 1 for horizontal
+
+    Returns:
+       psi_values: ndarray of psi values for each variable
+
+    Author:
+       Matthew Burke
+       github.com/mwburke
+       mwburke.github.io.com
+    """
+
+    def psi(expected_array, actual_array, buckets):
+        """Calculate the PSI for a single variable
+
+        Args:
+           expected_array: numpy array of original values
+           actual_array: numpy array of new values, same size as expected
+           buckets: number of percentile ranges to bucket the values into
+
+        Returns:
+           psi_value: calculated PSI value
+        """
+
+        def scale_range(input_val, min_val, max_val):
+            input_val += -(np.min(input_val))
+            input_val /= np.max(input_val) / (max_val - min_val)
+            input_val += min_val
+            return input_val
+
+        breakpoints = np.arange(0, buckets + 1) / buckets * 100
+
+        if buckettype == "bins":
+            breakpoints = scale_range(breakpoints, np.min(expected_array), np.max(expected_array))
+        elif buckettype == "quantiles":
+            breakpoints = np.stack([np.percentile(expected_array, b) for b in breakpoints])
+
+        expected_fractions = np.histogram(expected_array, breakpoints)[0] / len(expected_array)
+        actual_fractions = np.histogram(actual_array, breakpoints)[0] / len(actual_array)
+
+        def sub_psi(e_perc, a_perc):
+            '''Calculate the actual PSI value from comparing the values.
+               Update the actual value to a very small number if equal to zero
+            '''
+            if a_perc == 0:
+                a_perc = 0.0001
+            if e_perc == 0:
+                e_perc = 0.0001
+
+            value = (e_perc - a_perc) * np.log(e_perc / a_perc)
+            return (value)
+
+        psi_value = sum(sub_psi(expected_fractions[i], actual_fractions[i]) for i in range(0, len(expected_fractions)))
+
+        return (psi_value)
+
+    if len(expected.shape) == 1:
+        psi_values = np.empty(len(expected.shape))
+    else:
+        psi_values = np.empty(expected.shape[1 - axis])
+
+    for i in range(0, len(psi_values)):
+        if len(psi_values) == 1:
+            try:
+                psi_values = psi(expected, actual, buckets)
+            except:
+                psi_values = 0.9
+        elif axis == 0:
+            psi_values[i] = psi(expected[:, i], actual[:, i], buckets)
+        elif axis == 1:
+            psi_values[i] = psi(expected[i, :], actual[i, :], buckets)
+
+    return psi_values
 
 
 def compare_dataframes(df_original, df_generated):
@@ -108,7 +191,10 @@ def compare_dataframes(df_original, df_generated):
     similarity_score = compare_dataframes(df1.copy(), df2.copy())
     print(similarity_score)
     """
-
+    # Handle DataFrames with different shapes
+    if len(df_original.columns) != len(df_generated.columns):
+        # Penalize if column names don't match
+        return 0.0
     # Handle potential differences in row count
     n_original = len(df_original)
     n_generated = len(df_generated)
@@ -138,23 +224,14 @@ def compare_dataframes(df_original, df_generated):
     psi_scores = []
     for col_orig in df_original.columns:
         if col_orig in df_generated.columns:
-            p_orig = df_original[col_orig].value_counts(normalize=True)
-            p_gen = df_generated[col_orig].value_counts(normalize=True)
-            # Handle potential division by zero with entropy function (uses log2 internally)
-            h_orig = entropy(p_orig, base=2)
-            h_gen = entropy(p_gen, base=2)
-            h_joint = entropy(pd.concat([p_orig, p_gen], ignore_index=True), base=2)
-            psi = max(0, min(h_orig + h_gen - h_joint, 1))  # Ensure non-negative and cap at 1
-            psi_scores.append(psi)
+            psi_scores.append(calculate_psi(df_original[col_orig], df_generated[col_orig],
+                                            buckets=10))  # Assuming buckets=10 for PSI calculation
     psi_similarity = sum(psi_scores) / len(psi_scores) if psi_scores else 1
 
     # Combine uniqueness, data quality, and PSI scores (weighted)
-    similarity_score = 0.5 * uniqueness_score + 0.3 * data_quality_score + 0.2 * psi_similarity
-
+    similarity_score = 0.1 * uniqueness_score + 0.45 * data_quality_score + 0.45 * (1/psi_similarity)
+    print(uniqueness_score, data_quality_score, psi_similarity)
     # Ensure score is between 0 and 1
     similarity_score = min(max(similarity_score, 0), 1)
 
     return similarity_score
-
-
-TEMP_TARGET = "_temp_target"
