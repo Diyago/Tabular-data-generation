@@ -47,7 +47,7 @@ class DataTransformer:
 
     @staticmethod
     def _fit_discrete(column, data):
-        ohe = OneHotEncoder(sparse=False)
+        ohe = OneHotEncoder(sparse_output=False)
         ohe.fit(data)
         categories = len(ohe.categories_[0])
 

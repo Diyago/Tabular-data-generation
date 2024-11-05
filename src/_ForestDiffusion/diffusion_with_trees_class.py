@@ -5,7 +5,6 @@ from functools import partial
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-from catboost import CatBoostRegressor
 from joblib import delayed, Parallel
 from lightgbm import LGBMRegressor
 from sklearn.ensemble import RandomForestRegressor
@@ -161,10 +160,8 @@ class ForestDiffusionModel():
             out = LGBMRegressor(n_estimators=self.n_estimators, num_leaves=self.num_leaves, learning_rate=0.1,
                                 random_state=self.seed, force_col_wise=True)
         elif self.model == 'catboost':
-            out = CatBoostRegressor(iterations=self.n_estimators, loss_function='RMSE', max_depth=self.max_depth,
-                                    silent=True,
-                                    l2_leaf_reg=0.0,
-                                    random_seed=self.seed)  # consider t as a golden feature if t is a variable
+            raise NotImplemented("catboost usage has been disabled, please use 'random_forest', 'lgbm' or 'xgboost' "
+                                 "instead")
         elif self.model == 'xgboost':
             out = xgb.XGBRegressor(n_estimators=self.n_estimators, objective='reg:squarederror', eta=self.eta,
                                    max_depth=self.max_depth,

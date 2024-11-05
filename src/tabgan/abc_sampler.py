@@ -13,7 +13,7 @@ __license__ = "Apache 2.0"
 class SampleData(ABC):
     """
         Factory method for different sampler strategies. The goal is to generate more train data
-        which should be more close to test, in other word we trying to fix uneven distribution.
+        which should be more close to test, in other word we're trying to fix uneven distribution.
     """
 
     @abstractmethod

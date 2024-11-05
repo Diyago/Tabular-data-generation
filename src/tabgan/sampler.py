@@ -252,13 +252,43 @@ class SamplerOriginal(Sampler):
                     )
                 )
 
+    def handle_generated_data(self, train_df, generated_df, only_generated_data):
+        generated_df = pd.DataFrame(generated_df)
+        generated_df.columns = train_df.columns
+        for i in range(len(generated_df.columns)):
+            generated_df[generated_df.columns[i]] = generated_df[
+                generated_df.columns[i]
+            ].astype(train_df.dtypes.values[i])
+        if not only_generated_data:
+            train_df = pd.concat([train_df, generated_df]).reset_index(drop=True)
+            logging.info(
+                "Generated shapes: {} plus target".format(
+                    _drop_col_if_exist(train_df, self.TEMP_TARGET).shape
+                )
+            )
+            return (
+                _drop_col_if_exist(train_df, self.TEMP_TARGET),
+                get_columns_if_exists(train_df, self.TEMP_TARGET),
+            )
+        else:
+            logging.info(
+                "Generated shapes: {} plus target".format(
+                    _drop_col_if_exist(generated_df, self.TEMP_TARGET).shape
+                )
+            )
+            return (
+                _drop_col_if_exist(generated_df, self.TEMP_TARGET),
+                get_columns_if_exists(generated_df, self.TEMP_TARGET),
+            )
+
 
 class SamplerGAN(SamplerOriginal):
     def check_params(self):
-        if self.gen_params["batch_size"] % 2 != 0:
+        if self.gen_params["batch_size"] % 10 != 0:
             logging.warning(
-                "batch_size should even, but {} is provided. Increasing by 1".format(self.gen_params["batch_size"]))
-            self.gen_params["batch_size"] = self.gen_params["batch_size"] + 1
+                "Batch size should be divisible to 10, but provided {}. Fixing it".format(
+                    self.gen_params["batch_size"]))
+            self.gen_params["batch_size"] += 10 - (self.gen_params["batch_size"] % 10)
 
         if "patience" not in self.gen_params:
             logging.warning("patience param is not set for GAN params, so setting it to default ""25""")
@@ -285,39 +315,7 @@ class SamplerGAN(SamplerOriginal):
         generated_df = ctgan.sample(
             self.pregeneration_frac * self.get_generated_shape(train_df)
         )
-        data_dtype = train_df.dtypes.values
-
-        for i in range(len(generated_df.columns)):
-            generated_df[generated_df.columns[i]] = generated_df[
-                generated_df.columns[i]
-            ].astype(data_dtype[i])
-
-        if not only_generated_data:
-            train_df = pd.concat([train_df, generated_df]).reset_index(drop=True)
-            logging.info(
-                "Generated shapes: {} plus target".format(
-                    _drop_col_if_exist(train_df, self.TEMP_TARGET).shape
-                )
-            )
-            return (
-                _drop_col_if_exist(train_df, self.TEMP_TARGET),
-                get_columns_if_exists(train_df, self.TEMP_TARGET),
-            )
-        else:
-            logging.info(
-                "Generated shapes: {} plus target".format(
-                    _drop_col_if_exist(train_df, self.TEMP_TARGET).shape
-                )
-            )
-            return (
-                _drop_col_if_exist(generated_df, self.TEMP_TARGET),
-                get_columns_if_exists(generated_df, self.TEMP_TARGET),
-            )
-
-        return (
-            _drop_col_if_exist(train_df, self.TEMP_TARGET),
-            get_columns_if_exists(train_df, self.TEMP_TARGET),
-        )
+        return self.handle_generated_data(train_df, generated_df, only_generated_data)
 
 
 class SamplerDiffusion(SamplerOriginal):
@@ -340,40 +338,8 @@ class SamplerDiffusion(SamplerOriginal):
                                                 diffusion_type='flow', n_jobs=-1)
         logging.info("Finished training ForestDiffusionModel")
         generated_df = forest_model.generate(batch_size=int(self.gen_x_times * train_df.to_numpy().shape[0]))
-        data_dtype = train_df.dtypes.values
-        generated_df = pd.DataFrame(generated_df)
-        generated_df.columns = train_df.columns
-        for i in range(len(generated_df.columns)):
-            generated_df[generated_df.columns[i]] = generated_df[
-                generated_df.columns[i]
-            ].astype(data_dtype[i])
 
-        if not only_generated_data:
-            train_df = pd.concat([train_df, generated_df]).reset_index(drop=True)
-            logging.info(
-                "Generated shapes: {} plus target".format(
-                    _drop_col_if_exist(train_df, self.TEMP_TARGET).shape
-                )
-            )
-            return (
-                _drop_col_if_exist(train_df, self.TEMP_TARGET),
-                get_columns_if_exists(train_df, self.TEMP_TARGET),
-            )
-        else:
-            logging.info(
-                "Generated shapes: {} plus target".format(
-                    _drop_col_if_exist(train_df, self.TEMP_TARGET).shape
-                )
-            )
-            return (
-                _drop_col_if_exist(generated_df, self.TEMP_TARGET),
-                get_columns_if_exists(generated_df, self.TEMP_TARGET),
-            )
-
-        return (
-            _drop_col_if_exist(train_df, self.TEMP_TARGET),
-            get_columns_if_exists(train_df, self.TEMP_TARGET),
-        )
+        return self.handle_generated_data(train_df, generated_df, only_generated_data)
 
     @staticmethod
     def get_column_indexes(df, column_names):
@@ -413,94 +379,39 @@ class SamplerLLM(SamplerOriginal):
 
         generated_df = model.sample(int(self.gen_x_times * train_df.shape[0]), device=device,
                                     max_length=self.gen_params["max_length"])
-        data_dtype = train_df.dtypes.values
-        generated_df = pd.DataFrame(generated_df)
-        generated_df.columns = train_df.columns
-        for i in range(len(generated_df.columns)):
-            generated_df[generated_df.columns[i]] = generated_df[
-                generated_df.columns[i]
-            ].astype(data_dtype[i])
-
-        if not only_generated_data:
-            train_df = pd.concat([train_df, generated_df]).reset_index(drop=True)
-            logging.info(
-                "Generated shapes: {} plus target".format(
-                    _drop_col_if_exist(train_df, self.TEMP_TARGET).shape
-                )
-            )
-            return (
-                _drop_col_if_exist(train_df, self.TEMP_TARGET),
-                get_columns_if_exists(train_df, self.TEMP_TARGET),
-            )
-        else:
-            logging.info(
-                "Generated shapes: {} plus target".format(
-                    _drop_col_if_exist(train_df, self.TEMP_TARGET).shape
-                )
-            )
-            return (
-                _drop_col_if_exist(generated_df, self.TEMP_TARGET),
-                get_columns_if_exists(generated_df, self.TEMP_TARGET),
-            )
-
-        return (
-            _drop_col_if_exist(train_df, self.TEMP_TARGET),
-            get_columns_if_exists(train_df, self.TEMP_TARGET),
-        )
+        return self.handle_generated_data(train_df, generated_df, only_generated_data)
 
 
 if __name__ == "__main__":
     setup_logging(logging.DEBUG)
     train_size = 75
-    train = pd.DataFrame(
-        np.random.randint(-10, 150, size=(train_size, 4)), columns=list("ABCD")
-    )
-    logging.info(train)
+    train = pd.DataFrame(np.random.randint(-10, 150, size=(train_size, 4)), columns=list("ABCD"))
     target = pd.DataFrame(np.random.randint(0, 2, size=(train_size, 1)), columns=list("Y"))
     test = pd.DataFrame(np.random.randint(0, 100, size=(train_size, 4)), columns=list("ABCD"))
-    _sampler(OriginalGenerator(gen_x_times=15), train, target, test)
-    _sampler(
+    logging.info(train)
+
+    generators = [
+        OriginalGenerator(gen_x_times=15),
         GANGenerator(gen_x_times=10, only_generated_data=False,
-                     gen_params={"batch_size": 500, "patience": 25, "epochs": 500, }), train, target, test
-    )
-    _sampler(
-        LLMGenerator(gen_params={"batch_size": 32, "epochs": 4, "llm": "distilgpt2",
-                                 "max_length": 500}).generate_data_pipe(train,
-                                                                        target,
-                                                                        test, )
-    )
-
-    _sampler(OriginalGenerator(gen_x_times=15), train, None, train)
-    _sampler(
+                     gen_params={"batch_size": 500, "patience": 25, "epochs": 500}),
+        LLMGenerator(gen_params={"batch_size": 32, "epochs": 4, "llm": "distilgpt2", "max_length": 500}),
+        OriginalGenerator(gen_x_times=15),
         GANGenerator(cat_cols=["A"], gen_x_times=20, only_generated_data=True),
-        train,
-        None,
-        train,
-    )
-    _sampler(
         ForestDiffusionGenerator(cat_cols=["A"], gen_x_times=1, only_generated_data=True),
-        train,
-        None,
-        train,
-    )
-    _sampler(
         ForestDiffusionGenerator(gen_x_times=10, only_generated_data=False,
-                                 gen_params={"batch_size": 500, "patience": 25, "epochs": 500, }),
-        train, target, test
-    )
+                                 gen_params={"batch_size": 500, "patience": 25, "epochs": 500})
+    ]
 
-    min_date = pd.to_datetime('2019-01-01')
-    max_date = pd.to_datetime('2021-12-31')
+    for gen in generators:
+        _sampler(gen, train, target if 'LLMGenerator' not in str(type(gen)) else None, test)
 
-    d = (max_date - min_date).days + 1
-
-    train['Date'] = min_date + pd.to_timedelta(np.random.randint(d, size=train_size), unit='d')
+    min_date, max_date = pd.to_datetime('2019-01-01'), pd.to_datetime('2021-12-31')
+    train['Date'] = min_date + pd.to_timedelta(np.random.randint((max_date - min_date).days + 1, size=train_size),
+                                               unit='d')
     train = get_year_mnth_dt_from_date(train, 'Date')
 
-    new_train, new_target = GANGenerator(gen_x_times=1.1, cat_cols=['year'], bot_filter_quantile=0.001,
-                                         top_filter_quantile=0.999,
-                                         is_post_process=True, pregeneration_frac=2, only_generated_data=False). \
-        generate_data_pipe(train.drop('Date', axis=1), None,
-                           train.drop('Date', axis=1)
-                           )
+    new_train, new_target = GANGenerator(
+        gen_x_times=1.1, cat_cols=['year'], bot_filter_quantile=0.001, top_filter_quantile=0.999,
+        is_post_process=True, pregeneration_frac=2, only_generated_data=False
+    ).generate_data_pipe(train.drop('Date', axis=1), None, train.drop('Date', axis=1))
     new_train = collect_dates(new_train)

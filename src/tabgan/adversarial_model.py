@@ -8,6 +8,8 @@ import warnings
 
 from tabgan.encoders import MultipleEncoder, DoubleValidationEncoderNumerical
 
+warnings.filterwarnings("ignore", message="No further splits with positive gain")
+
 
 class AdversarialModel:
     def __init__(
@@ -163,7 +165,7 @@ class Model:
                     X_val[col] = X_val[col].astype("category")
 
             # fit model            
-            model = LGBMClassifier(**self.model_params)
+            model = LGBMClassifier(**self.model_params, verbose=-1)
             model.fit(
                 X_train,
                 y_train,

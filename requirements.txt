@@ -4,11 +4,10 @@ numpy>=1.22.0
 torch>=1.6.0
 pandas>=1.2.2
 lightgbm>=2.2.3
-scikit_learn>=1.2.2
+scikit_learn>=1.5.2
 torchvision>=0.4.2
-numpy==1.22.0
+numpy>=2.0
 python-dateutil==2.8.1
 tqdm>=4.61.1
 xgboost>=2.0.0
-catboost>=1.2.5
 be-great==0.0.7
