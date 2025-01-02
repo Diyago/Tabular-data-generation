@@ -32,6 +32,8 @@ class AdversarialModel:
             example StratifiedKFold(5)
             model_params: model training hyperparameters
         """
+        self.metrics = None
+        self.trained_model = None
         self.cat_validation = cat_validation
         self.encoders_names = encoders_names
         self.cat_cols = cat_cols
