@@ -10,4 +10,4 @@ numpy>=2.0
 python-dateutil==2.8.1
 tqdm>=4.61.1
 xgboost>=2.0.0
-be-great==0.0.7
+be-great==0.0.8

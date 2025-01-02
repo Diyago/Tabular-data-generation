@@ -12,7 +12,7 @@ class TestUtils(unittest.TestCase):
 
 
 class TestUtils(unittest.TestCase):
-    def test_get_year_mnth_dt_from_date(self):
+    def test_get_year_month_dt_from_date(self):
         # create a sample dataframe
         df = pd.DataFrame({
             'Date': ['2022-01-01', '2022-02-01', '2022-03-01']
