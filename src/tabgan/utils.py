@@ -162,7 +162,7 @@ def calculate_psi(expected, actual, buckettype="bins", buckets=10, axis=0):
         if len(psi_values) == 1:
             try:
                 psi_values = psi(expected, actual, buckets)
-            except:
+            except (ValueError, ZeroDivisionError):
                 psi_values = 0.9
         elif axis == 0:
             psi_values[i] = psi(expected[:, i], actual[:, i], buckets)
