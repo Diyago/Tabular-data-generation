@@ -8,6 +8,8 @@ import warnings
 
 from encoders import MultipleEncoder, DoubleValidationEncoderNumerical
 
+warnings.filterwarnings("ignore")
+
 
 class Model:
     def __init__(
@@ -51,7 +53,7 @@ class Model:
 
     def fit(self, X: pd.DataFrame, y: np.array) -> tuple:
         """
-        Fits model with speficified in init params
+        Fits model with specified in init params
         Args:
             X: Input training dataframe
             y: Target for X
@@ -96,7 +98,7 @@ class Model:
                 X_val[col] = X_val[col].astype("category")
 
             # fit model
-            model = LGBMClassifier(**self.model_params)
+            model = LGBMClassifier(**self.model_params, verbose=-1)
             model.fit(
                 X_train,
                 y_train,

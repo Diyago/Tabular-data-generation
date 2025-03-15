@@ -172,41 +172,31 @@ class SamplerOriginal(Sampler):
         self._validate_data(train_df, target, test_df)
         train_df[self.TEMP_TARGET] = target
 
-        for num_col in test_df.columns:
-            if self.cat_cols is None or num_col not in self.cat_cols:
-                min_val = test_df[num_col].quantile(self.bot_filter_quantile)
-                max_val = test_df[num_col].quantile(self.top_filter_quantile)
-                filtered_df = train_df.loc[
-                    ((train_df[num_col] >= min_val) & (train_df[num_col] <= max_val)) | (train_df[num_col].isna())
-                    ]
-                if filtered_df.shape[0] < 10:
-                    raise ValueError(
-                        "After post-processing generated data's shape less than 10. For columns {} test "
-                        "might be highly skewed. Filter conditions are min_val = {} and max_val = {}.".format(
-                            num_col, min_val, max_val
-                        )
-                    )
-                train_df = filtered_df
+        # Filter numerical columns
+        for col in test_df.columns:
+            if self.cat_cols is None or col not in self.cat_cols:
+                min_val = test_df[col].quantile(self.bot_filter_quantile)
+                max_val = test_df[col].quantile(self.top_filter_quantile)
+                train_df = train_df[(train_df[col] >= min_val) & (train_df[col] <= max_val)]
 
-        if self.cat_cols is not None:
-            for cat_col in self.cat_cols:
-                filtered_df = train_df[
-                    train_df[cat_col].isin(test_df[cat_col].unique())
-                ]
-                if filtered_df.shape[0] < 10:
-                    raise ValueError(
-                        "After post-processing generated data's shape less than 10. For columns {} test "
-                        "might be highly skewed.".format(num_col)
-                    )
-                train_df = filtered_df
+                if train_df.shape[0] < 10:
+                    raise ValueError(f"Too few samples (<10) after filtering column {col}. "
+                                     f"Test data may be skewed. Filter range: [{min_val}, {max_val}]")
+
+        # Filter categorical columns
+        if self.cat_cols:
+            for col in self.cat_cols:
+                train_df = train_df[train_df[col].isin(test_df[col].unique())]
+                if train_df.shape[0] < 10:
+                    raise ValueError(f"Too few samples (<10) after filtering categorical column {col}")
+
         logging.info(
-            "Generated shapes after postprocessing: {} plus target".format(
-                train_df.drop(self.TEMP_TARGET, axis=1).shape
-            )
-        )
+            f"Generated shapes after postprocessing: {train_df.drop(self.TEMP_TARGET, axis=1).shape} plus target")
+
+        result_df = train_df.reset_index(drop=True)
         return (
-            train_df.drop(self.TEMP_TARGET, axis=1).reset_index(drop=True),
-            train_df[self.TEMP_TARGET].reset_index(drop=True),
+            result_df.drop(self.TEMP_TARGET, axis=1),
+            result_df[self.TEMP_TARGET]
         )
 
     def adversarial_filtering(self, train_df, target, test_df):
@@ -253,12 +243,34 @@ class SamplerOriginal(Sampler):
                 )
 
     def handle_generated_data(self, train_df, generated_df, only_generated_data):
+        """
+        Integrates synthetic data with the original dataset by preserving data types
+        and structural alignment.
+
+        This method transforms generated data to match the original dataset's structure
+        and types. It can either combine synthetic with original data or return only
+        the synthetic data.
+
+        Args:
+            train_df: The original dataset that defines the expected structure
+            generated_df: The synthetic data to be processed
+            only_generated_data: Boolean flag to return only synthetic data
+
+        Returns:
+            A tuple containing:
+            - Feature matrix (with or without original data)
+            - Corresponding target vector
+        """
         generated_df = pd.DataFrame(generated_df)
         generated_df.columns = train_df.columns
-        for i in range(len(generated_df.columns)):
-            generated_df[generated_df.columns[i]] = generated_df[
-                generated_df.columns[i]
-            ].astype(train_df.dtypes.values[i])
+
+        # Preserve original data types
+        for column_index in range(len(generated_df.columns)):
+            target_column = generated_df.columns[column_index]
+            generated_df[target_column] = generated_df[target_column].astype(
+                train_df.dtypes.values[column_index]
+            )
+
         if not only_generated_data:
             train_df = pd.concat([train_df, generated_df]).reset_index(drop=True)
             logging.info(

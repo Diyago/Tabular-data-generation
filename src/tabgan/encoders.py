@@ -18,51 +18,44 @@ from sklearn.model_selection import RepeatedStratifiedKFold
 
 def get_single_encoder(encoder_name: str, cat_cols: list):
     """
-    Get encoder by its name
-    :param encoder_name: Name of desired encoder
-    :param cat_cols: Cat columns for encoding
-    :return: Categorical encoder
+    Function to instantiate categorical encoders based on name.
+    
+    This function provides a unified interface to create various categorical encoders
+    for feature engineering. Each encoder implements different strategies for converting
+    categorical variables into numerical representations.
+
+    Args:
+        encoder_name: String identifier for the desired encoder type
+        cat_cols: List of categorical column names to be encoded
+
+    Returns:
+        A configured categorical encoder instance
+
+    Raises:
+        NotImplementedError: If the requested encoder type is not supported
     """
-    if encoder_name == "FrequencyEncoder":
-        encoder = FrequencyEncoder(cols=cat_cols)
+    # Define mapping of encoder names to their corresponding classes
+    encoder_mapping = {
+        "FrequencyEncoder": FrequencyEncoder,
+        "WOEEncoder": WOEEncoder, 
+        "TargetEncoder": TargetEncoder,
+        "SumEncoder": SumEncoder,
+        "MEstimateEncoder": MEstimateEncoder,
+        "LeaveOneOutEncoder": LeaveOneOutEncoder,
+        "HelmertEncoder": HelmertEncoder,
+        "BackwardDifferenceEncoder": BackwardDifferenceEncoder,
+        "JamesSteinEncoder": JamesSteinEncoder,
+        "OrdinalEncoder": OrdinalEncoder,
+        "CatBoostEncoder": CatBoostEncoder,
+        "OneHotEncoder": OneHotEncoder
+    }
 
-    if encoder_name == "WOEEncoder":
-        encoder = WOEEncoder(cols=cat_cols)
-
-    if encoder_name == "TargetEncoder":
-        encoder = TargetEncoder(cols=cat_cols)
-
-    if encoder_name == "SumEncoder":
-        encoder = SumEncoder(cols=cat_cols)
-
-    if encoder_name == "MEstimateEncoder":
-        encoder = MEstimateEncoder(cols=cat_cols)
-
-    if encoder_name == "LeaveOneOutEncoder":
-        encoder = LeaveOneOutEncoder(cols=cat_cols)
-
-    if encoder_name == "HelmertEncoder":
-        encoder = HelmertEncoder(cols=cat_cols)
-
-    if encoder_name == "BackwardDifferenceEncoder":
-        encoder = BackwardDifferenceEncoder(cols=cat_cols)
-
-    if encoder_name == "JamesSteinEncoder":
-        encoder = JamesSteinEncoder(cols=cat_cols)
-
-    if encoder_name == "OrdinalEncoder":
-        encoder = OrdinalEncoder(cols=cat_cols)
-
-    if encoder_name == "CatBoostEncoder":
-        encoder = CatBoostEncoder(cols=cat_cols)
-
-    if encoder_name == "MEstimateEncoder":
-        encoder = MEstimateEncoder(cols=cat_cols)
-    if encoder_name == "OneHotEncoder":
-        encoder = OneHotEncoder(cols=cat_cols)
-    if encoder is None:
-        raise NotImplementedError("To be implemented")
-    return encoder
+    # Look up and instantiate the appropriate encoder
+    encoder_class = encoder_mapping.get(encoder_name)
+    if encoder_class:
+        return encoder_class(cols=cat_cols)
+    
+    raise NotImplementedError(f"Encoder '{encoder_name}' is not implemented")
 
 
 class DoubleValidationEncoderNumerical:
