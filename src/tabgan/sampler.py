@@ -403,15 +403,15 @@ if __name__ == "__main__":
     logging.info(train)
 
     generators = [
-        # OriginalGenerator(gen_x_times=15),
-        # GANGenerator(gen_x_times=10, only_generated_data=False,
-        #              gen_params={"batch_size": 500, "patience": 25, "epochs": 500}),
-        # LLMGenerator(gen_params={"batch_size": 32, "epochs": 4, "llm": "distilgpt2", "max_length": 500}),
-        # OriginalGenerator(gen_x_times=15),
-        # GANGenerator(cat_cols=["A"], gen_x_times=20, only_generated_data=True),
+        OriginalGenerator(gen_x_times=15),
+        GANGenerator(gen_x_times=10, only_generated_data=False,
+                     gen_params={"batch_size": 500, "patience": 25, "epochs": 500}),
+        LLMGenerator(gen_params={"batch_size": 32, "epochs": 4, "llm": "distilgpt2", "max_length": 500}),
+        OriginalGenerator(gen_x_times=15),
+        GANGenerator(cat_cols=["A"], gen_x_times=20, only_generated_data=True),
         ForestDiffusionGenerator(cat_cols=["A"], gen_x_times=10, only_generated_data=True),
-        # ForestDiffusionGenerator(gen_x_times=15, only_generated_data=False,
-        #                         gen_params={"batch_size": 500, "patience": 25, "epochs": 500})
+        ForestDiffusionGenerator(gen_x_times=15, only_generated_data=False,
+                                gen_params={"batch_size": 500, "patience": 25, "epochs": 500})
     ]
 
     for gen in generators:
