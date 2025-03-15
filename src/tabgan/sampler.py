@@ -177,7 +177,7 @@ class SamplerOriginal(Sampler):
                 min_val = test_df[num_col].quantile(self.bot_filter_quantile)
                 max_val = test_df[num_col].quantile(self.top_filter_quantile)
                 filtered_df = train_df.loc[
-                    (train_df[num_col] >= min_val) & (train_df[num_col] <= max_val)
+                    ((train_df[num_col] >= min_val) & (train_df[num_col] <= max_val)) | (train_df[num_col].isna())
                     ]
                 if filtered_df.shape[0] < 10:
                     raise ValueError(
