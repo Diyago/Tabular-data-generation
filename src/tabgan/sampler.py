@@ -177,7 +177,7 @@ class SamplerOriginal(Sampler):
             if self.cat_cols is None or col not in self.cat_cols:
                 min_val = test_df[col].quantile(self.bot_filter_quantile)
                 max_val = test_df[col].quantile(self.top_filter_quantile)
-                train_df = train_df[(train_df[col] >= min_val) & (train_df[col] <= max_val)]
+                train_df = train_df[(train_df[col].isna()) | ((train_df[col] >= min_val) & (train_df[col] <= max_val))]
 
                 if train_df.shape[0] < 10:
                     raise ValueError(f"Too few samples (<10) after filtering column {col}. "
@@ -403,15 +403,15 @@ if __name__ == "__main__":
     logging.info(train)
 
     generators = [
-        OriginalGenerator(gen_x_times=15),
-        GANGenerator(gen_x_times=10, only_generated_data=False,
-                     gen_params={"batch_size": 500, "patience": 25, "epochs": 500}),
-        LLMGenerator(gen_params={"batch_size": 32, "epochs": 4, "llm": "distilgpt2", "max_length": 500}),
-        OriginalGenerator(gen_x_times=15),
-        GANGenerator(cat_cols=["A"], gen_x_times=20, only_generated_data=True),
-        ForestDiffusionGenerator(cat_cols=["A"], gen_x_times=1, only_generated_data=True),
-        ForestDiffusionGenerator(gen_x_times=10, only_generated_data=False,
-                                 gen_params={"batch_size": 500, "patience": 25, "epochs": 500})
+        # OriginalGenerator(gen_x_times=15),
+        # GANGenerator(gen_x_times=10, only_generated_data=False,
+        #              gen_params={"batch_size": 500, "patience": 25, "epochs": 500}),
+        # LLMGenerator(gen_params={"batch_size": 32, "epochs": 4, "llm": "distilgpt2", "max_length": 500}),
+        # OriginalGenerator(gen_x_times=15),
+        # GANGenerator(cat_cols=["A"], gen_x_times=20, only_generated_data=True),
+        ForestDiffusionGenerator(cat_cols=["A"], gen_x_times=10, only_generated_data=True),
+        # ForestDiffusionGenerator(gen_x_times=15, only_generated_data=False,
+        #                         gen_params={"batch_size": 500, "patience": 25, "epochs": 500})
     ]
 
     for gen in generators:
