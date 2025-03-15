@@ -16,8 +16,6 @@ from tabgan.adversarial_model import AdversarialModel
 from tabgan.utils import setup_logging, _drop_col_if_exist, \
     get_columns_if_exists, _sampler, get_year_mnth_dt_from_date, collect_dates
 
-warnings.filterwarnings("ignore")
-
 __author__ = "Insaf Ashrapov"
 __copyright__ = "Insaf Ashrapov"
 __license__ = "Apache 2.0"
@@ -88,7 +86,7 @@ class SamplerOriginal(Sampler):
         @param cat_cols: list = None - categorical columns
         @param bot_filter_quantile: float = 0.001 - bottom quantile for postprocess filtering
         @param top_filter_quantile: float = 0.999 - top quantile for postprocess filtering
-        @param is_post_process: bool = True - perform or not postfiltering, if false bot_filter_quantile
+        @param is_post_process: bool = True - perform or not post-filtering, if false bot_filter_quantile
          and top_filter_quantile ignored
         @param adversarial_model_params: dict params for adversarial filtering model, default values for binary task
         @param pregeneration_frac: float = 2 - for generation step gen_x_times * pregeneration_frac amount of data
@@ -172,41 +170,31 @@ class SamplerOriginal(Sampler):
         self._validate_data(train_df, target, test_df)
         train_df[self.TEMP_TARGET] = target
 
-        for num_col in test_df.columns:
-            if self.cat_cols is None or num_col not in self.cat_cols:
-                min_val = test_df[num_col].quantile(self.bot_filter_quantile)
-                max_val = test_df[num_col].quantile(self.top_filter_quantile)
-                filtered_df = train_df.loc[
-                    (train_df[num_col] >= min_val) & (train_df[num_col] <= max_val)
-                    ]
-                if filtered_df.shape[0] < 10:
-                    raise ValueError(
-                        "After post-processing generated data's shape less than 10. For columns {} test "
-                        "might be highly skewed. Filter conditions are min_val = {} and max_val = {}.".format(
-                            num_col, min_val, max_val
-                        )
-                    )
-                train_df = filtered_df
+        # Filter numerical columns
+        for col in test_df.columns:
+            if self.cat_cols is None or col not in self.cat_cols:
+                min_val = test_df[col].quantile(self.bot_filter_quantile)
+                max_val = test_df[col].quantile(self.top_filter_quantile)
+                train_df = train_df[(train_df[col] >= min_val) & (train_df[col] <= max_val)]
 
-        if self.cat_cols is not None:
-            for cat_col in self.cat_cols:
-                filtered_df = train_df[
-                    train_df[cat_col].isin(test_df[cat_col].unique())
-                ]
-                if filtered_df.shape[0] < 10:
-                    raise ValueError(
-                        "After post-processing generated data's shape less than 10. For columns {} test "
-                        "might be highly skewed.".format(num_col)
-                    )
-                train_df = filtered_df
+                if train_df.shape[0] < 10:
+                    raise ValueError(f"Too few samples (<10) after filtering column {col}. "
+                                     f"Test data may be skewed. Filter range: [{min_val}, {max_val}]")
+
+        # Filter categorical columns
+        if self.cat_cols:
+            for col in self.cat_cols:
+                train_df = train_df[train_df[col].isin(test_df[col].unique())]
+                if train_df.shape[0] < 10:
+                    raise ValueError(f"Too few samples (<10) after filtering categorical column {col}")
+
         logging.info(
-            "Generated shapes after postprocessing: {} plus target".format(
-                train_df.drop(self.TEMP_TARGET, axis=1).shape
-            )
-        )
+            f"Generated shapes after postprocessing: {train_df.drop(self.TEMP_TARGET, axis=1).shape} plus target")
+
+        result_df = train_df.reset_index(drop=True)
         return (
-            train_df.drop(self.TEMP_TARGET, axis=1).reset_index(drop=True),
-            train_df[self.TEMP_TARGET].reset_index(drop=True),
+            result_df.drop(self.TEMP_TARGET, axis=1),
+            result_df[self.TEMP_TARGET]
         )
 
     def adversarial_filtering(self, train_df, target, test_df):
@@ -253,12 +241,34 @@ class SamplerOriginal(Sampler):
                 )
 
     def handle_generated_data(self, train_df, generated_df, only_generated_data):
+        """
+        Integrates synthetic data with the original dataset by preserving data types
+        and structural alignment.
+
+        This method transforms generated data to match the original dataset's structure
+        and types. It can either combine synthetic with original data or return only
+        the synthetic data.
+
+        Args:
+            train_df: The original dataset that defines the expected structure
+            generated_df: The synthetic data to be processed
+            only_generated_data: Boolean flag to return only synthetic data
+
+        Returns:
+            A tuple containing:
+            - Feature matrix (with or without original data)
+            - Corresponding target vector
+        """
         generated_df = pd.DataFrame(generated_df)
         generated_df.columns = train_df.columns
-        for i in range(len(generated_df.columns)):
-            generated_df[generated_df.columns[i]] = generated_df[
-                generated_df.columns[i]
-            ].astype(train_df.dtypes.values[i])
+
+        # Preserve original data types
+        for column_index in range(len(generated_df.columns)):
+            target_column = generated_df.columns[column_index]
+            generated_df[target_column] = generated_df[target_column].astype(
+                train_df.dtypes.values[column_index]
+            )
+
         if not only_generated_data:
             train_df = pd.concat([train_df, generated_df]).reset_index(drop=True)
             logging.info(
@@ -392,14 +402,15 @@ if __name__ == "__main__":
 
     generators = [
         OriginalGenerator(gen_x_times=15),
-        GANGenerator(gen_x_times=10, only_generated_data=False,
-                     gen_params={"batch_size": 500, "patience": 25, "epochs": 500}),
-        LLMGenerator(gen_params={"batch_size": 32, "epochs": 4, "llm": "distilgpt2", "max_length": 500}),
-        OriginalGenerator(gen_x_times=15),
-        GANGenerator(cat_cols=["A"], gen_x_times=20, only_generated_data=True),
+        # GANGenerator(gen_x_times=10, only_generated_data=False,
+        #              gen_params={"batch_size": 500, "patience": 25, "epochs": 500}),
+        # LLMGenerator(gen_params={"batch_size": 32, "epochs": 4, "llm": "distilgpt2", "max_length": 500}),
+        # OriginalGenerator(gen_x_times=15),
+        # GANGenerator(cat_cols=["A"], gen_x_times=20, only_generated_data=True),
         ForestDiffusionGenerator(cat_cols=["A"], gen_x_times=1, only_generated_data=True),
         ForestDiffusionGenerator(gen_x_times=10, only_generated_data=False,
-                                 gen_params={"batch_size": 500, "patience": 25, "epochs": 500})
+
+                                  gen_params={"batch_size": 500, "patience": 25, "epochs": 500})
     ]
 
     for gen in generators:

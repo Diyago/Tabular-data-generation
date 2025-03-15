@@ -19,40 +19,39 @@ from _ForestDiffusion.utils.utils_diffusion import build_data_xt, euler_solve
 # Make sure to specific which features are categorical and which are integers
 # Note: Binary features can be considered integers since they will be rounded to the nearest integer and then clipped
 class ForestDiffusionModel():
-
     def __init__(self, X,
-                 label_y=None,
-                 # must be a categorical/binary variable; if provided will learn multiple models for each label y
-                 n_t=50,  # number of noise level
-                 model='xgboost',  # xgboost, random_forest, lgbm, catboost
-                 diffusion_type='flow',  # vp, flow (flow is better, but only vp can be used for imputation)
-                 max_depth=7, n_estimators=100, eta=0.3,  # xgboost hyperparameters
-                 num_leaves=31,  # lgbm hyperparameters
-                 duplicate_K=100,  # number of different noise sample per real data sample
-                 bin_indexes=[],  # vector which indicates which column is binary
-                 cat_indexes=[],  # vector which indicates which column is categorical (>=3 categories)
-                 int_indexes=[],
-                 # vector which indicates which column is an integer (ordinal variables such as number of cats in a box)
-                 true_min_max_values=None,
-                 # Vector of form [[min_x, min_y], [max_x, max_y]]; If  provided, we use these values as the min/max for each variables when using clipping
-                 gpu_hist=False,  # using GPU or not
+                 label_y=None,  # categorical/binary variable for conditional generation
+                 n_t=50,  # number of noise levels
+                 model='xgboost',  # model type: xgboost, random_forest, lgbm
+                 diffusion_type='flow',  # flow or vp (flow is better, vp for imputation)
+                 max_depth=7, 
+                 n_estimators=100, 
+                 eta=0.3,  # xgboost params
+                 num_leaves=31,  # lgbm params
+                 duplicate_K=100,  # noise samples per real data sample
+                 bin_indexes=[],  # binary column indices
+                 cat_indexes=[],  # categorical column indices (≥3 categories)
+                 int_indexes=[],  # integer column indices
+                 true_min_max_values=None,  # optional min/max bounds [[min_vals], [max_vals]]
+                 gpu_hist=False,  # use GPU
                  eps=1e-3,
                  beta_min=0.1,
                  beta_max=8,
-                 n_jobs=-1,
-                 # cpus used (feel free to limit it to something small, this will leave more cpus per model; for lgbm you have to use n_jobs=1, otherwise it will never finish)
-                 seed=666):  # Duplicate the dataset for improved performance
+                 n_jobs=-1,  # CPU cores to use
+                 seed=666):
 
         np.random.seed(seed)
 
-        # Sanity check, must remove observations with only missing data
+        # Remove rows with all missing values
         obs_to_remove = np.isnan(X).all(axis=1)
         X = X[~obs_to_remove]
         if label_y is not None:
             label_y = label_y[~obs_to_remove]
 
-        int_indexes = int_indexes + bin_indexes  # since we round those, we do not need to dummy-code the binary variables
+        # Combine binary and integer indices
+        int_indexes = int_indexes + bin_indexes
 
+        # Set min/max values for normalization
         if true_min_max_values is not None:
             self.X_min = true_min_max_values[0]
             self.X_max = true_min_max_values[1]
@@ -60,18 +59,23 @@ class ForestDiffusionModel():
             self.X_min = np.nanmin(X, axis=0, keepdims=1)
             self.X_max = np.nanmax(X, axis=0, keepdims=1)
 
+        # Store indices for later use
         self.cat_indexes = cat_indexes
         self.int_indexes = int_indexes
+        
+        # One-hot encode categorical variables
         if len(self.cat_indexes) > 0:
-            X, self.X_names_before, self.X_names_after = self.dummify(X)  # dummy-coding for categorical variables
+            X, self.X_names_before, self.X_names_after = self.dummify(X)
 
-        # min-max normalization, this applies to dummy-coding too to ensure that they become -1 or +1
+        # Normalize data to [-1, 1] range
         self.scaler = MinMaxScaler(feature_range=(-1, 1))
         X = self.scaler.fit_transform(X)
 
-        X1 = X
-        self.X1 = copy.deepcopy(X1)
-        self.b, self.c = X1.shape
+        # Store normalized data and dimensions
+        self.X1 = copy.deepcopy(X)
+        self.b, self.c = X.shape
+        
+        # Store parameters
         self.n_t = n_t
         self.duplicate_K = duplicate_K
         self.model = model
@@ -83,73 +87,98 @@ class ForestDiffusionModel():
         self.gpu_hist = gpu_hist
         self.label_y = label_y
         self.n_jobs = n_jobs
-
-        if model == 'random_forest' and np.sum(np.isnan(X1)) > 0:
-            raise ValueError('The dataset must not contain missing data in order to use model=random_forest')
-
-        assert diffusion_type == 'vp' or diffusion_type == 'flow'
         self.diffusion_type = diffusion_type
-        self.sde = None
         self.eps = eps
         self.beta_min = beta_min
         self.beta_max = beta_max
+
+        # Check for missing data with random forest
+        if model == 'random_forest' and np.sum(np.isnan(X)) > 0:
+            raise ValueError('Random forest cannot handle missing data')
+
+        # Set up diffusion process
+        self.sde = None
         if diffusion_type == 'vp':
             self.sde = VPSDE(beta_min=self.beta_min, beta_max=self.beta_max, N=n_t)
+        elif diffusion_type != 'flow':
+            raise ValueError("diffusion_type must be 'vp' or 'flow'")
 
-        if duplicate_K > 1:  # we duplicate the data multiple times, so that X0 is k times bigger so we have more room to learn
-            X1 = np.tile(X1, (duplicate_K, 1))
-
+        # Duplicate data for better learning
+        X1 = np.tile(X, (duplicate_K, 1)) if duplicate_K > 1 else X
         X0 = np.random.normal(size=X1.shape)  # Noise data
 
+        # Set up class labels
+        self._setup_class_labels(X1.shape[0])
+
+        # Create training data
+        X_train, y_train = build_data_xt(X0, X1, n_t=self.n_t, diffusion_type=self.diffusion_type, 
+                                         eps=self.eps, sde=self.sde)
+
+        # Train models
+        self._train_models(X_train, y_train)
+
+    def _setup_class_labels(self, data_size):
+        """Set up class labels and masks for conditional generation"""
         if self.label_y is not None:
-            assert np.sum(np.isnan(
-                self.label_y)) == 0  # cannot have missing values in the label (just make a special categorical for nan if you need)
+            # Check for missing values in labels
+            if np.sum(np.isnan(self.label_y)) > 0:
+                raise ValueError("Cannot have missing values in label_y")
+                
+            # Get unique labels and their probabilities
             self.y_uniques, self.y_probs = np.unique(self.label_y, return_counts=True)
             self.y_probs = self.y_probs / np.sum(self.y_probs)
-            self.mask_y = {}  # mask for which observations has a specific value of y
-            for i in range(len(self.y_uniques)):
-                self.mask_y[self.y_uniques[i]] = np.zeros(self.b, dtype=bool)
-                self.mask_y[self.y_uniques[i]][self.label_y == self.y_uniques[i]] = True
-                self.mask_y[self.y_uniques[i]] = np.tile(self.mask_y[self.y_uniques[i]], (duplicate_K))
-        else:  # assuming a single unique label 0
+            
+            # Create masks for each label
+            self.mask_y = {}
+            for i, y_val in enumerate(self.y_uniques):
+                mask = np.zeros(self.b, dtype=bool)
+                mask[self.label_y == y_val] = True
+                self.mask_y[y_val] = np.tile(mask, (self.duplicate_K))
+        else:
+            # Default to a single class
             self.y_probs = np.array([1.0])
             self.y_uniques = np.array([0])
-            self.mask_y = {}  # mask for which observations has a specific value of y
-            self.mask_y[0] = np.ones(X1.shape[0], dtype=bool)
+            self.mask_y = {0: np.ones(data_size, dtype=bool)}
 
-        # Make Datasets of interpolation
-        X_train, y_train = build_data_xt(X0, X1, n_t=self.n_t, diffusion_type=self.diffusion_type, eps=self.eps,
-                                         sde=self.sde)
-
-        # Fit model(s)
-        n_steps = n_t
-        n_y = len(self.y_uniques)  # for each class train a seperate model
-
+    def _train_models(self, X_train, y_train):
+        """Train regression models for each timestep, class, and feature"""
+        n_steps = self.n_t
+        
+        # Reshape data for training
+        X_reshaped = X_train.reshape(self.n_t, self.b * self.duplicate_K, self.c)
+        y_reshaped = y_train.reshape(self.b * self.duplicate_K, self.c)
+        
+        # Initialize model storage
+        self.regr = [[[None for k in range(self.c)] for i in range(n_steps)] for j in self.y_uniques]
+        
         if self.n_jobs == 1:
-            self.regr = [[[None for k in range(self.c)] for i in range(n_steps)] for j in self.y_uniques]
+            # Single-threaded training
             for i in range(n_steps):
                 for j in range(len(self.y_uniques)):
                     for k in range(self.c):
                         self.regr[j][i][k] = self.train_parallel(
-                            X_train.reshape(self.n_t, self.b * self.duplicate_K, self.c)[i][self.mask_y[j], :],
-                            y_train.reshape(self.b * self.duplicate_K, self.c)[self.mask_y[j], k]
+                            X_reshaped[i][self.mask_y[self.y_uniques[j]], :],
+                            y_reshaped[self.mask_y[self.y_uniques[j]], k]
                         )
         else:
-            self.regr = Parallel(n_jobs=self.n_jobs)(  # using all cpus
+            # Parallel training
+            flat_models = Parallel(n_jobs=self.n_jobs)(
                 delayed(self.train_parallel)(
-                    X_train.reshape(self.n_t, self.b * self.duplicate_K, self.c)[i][self.mask_y[j], :],
-                    y_train.reshape(self.b * self.duplicate_K, self.c)[self.mask_y[j], k]
-                ) for i in range(n_steps) for j in self.y_uniques for k in range(self.c)
+                    X_reshaped[i][self.mask_y[self.y_uniques[j]], :],
+                    y_reshaped[self.mask_y[self.y_uniques[j]], k]
+                ) 
+                for i in range(n_steps) 
+                for j in range(len(self.y_uniques)) 
+                for k in range(self.c)
             )
-            # Replace fits with doubly loops to make things easier
-            self.regr_ = [[[None for k in range(self.c)] for i in range(n_steps)] for j in self.y_uniques]
-            current_i = 0
+            
+            # Reshape flat list into 3D structure
+            idx = 0
             for i in range(n_steps):
                 for j in range(len(self.y_uniques)):
                     for k in range(self.c):
-                        self.regr_[j][i][k] = self.regr[current_i]
-                        current_i += 1
-            self.regr = self.regr_
+                        self.regr[j][i][k] = flat_models[idx]
+                        idx += 1
 
     def train_parallel(self, X_train, y_train):
 
