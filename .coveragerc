@@ -1,8 +1,18 @@
 # .coveragerc to control coverage.py
 [run]
-branch = True
-source = tabgan
-# omit = bad_file.py
+source = .
+omit =
+    # Omit tests
+    tests/*
+    */tests/*
+    # Omit virtual environments if they're in the project directory
+    *venv/*
+    *virtualenv/*
+    # Standard omissions
+    setup.py
+    conftest.py
+    */__init__.py
+    */site-packages/*
 
 [paths]
 source =
@@ -26,3 +36,6 @@ exclude_lines =
     # Don't complain if non-runnable code isn't run:
     if 0:
     if __name__ == .__main__.:
+
+[html]
+directory = coverage_html_report
