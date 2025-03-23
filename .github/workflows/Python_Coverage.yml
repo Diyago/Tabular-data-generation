@@ -9,13 +9,20 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - 3.8
+          - 3.9
+          - '3.10'
+
     steps:
     - uses: actions/checkout@v3
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
-        python-version: [3.8, 3.9, '3.10']
+        python-version: ${{ matrix.python-version }}
 
     - name: Install dependencies
       run: |
@@ -25,8 +32,7 @@ jobs:
 
     - name: Test with pytest and coverage
       run: |
-        pytest --cov=. --cov-report=xml
-
+        pytest --cov=. --cov-report=xml --cov-report=term
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
