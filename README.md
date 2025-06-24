@@ -8,7 +8,7 @@
 
 Generative Networks are well-known for their success in realistic image generation. However, they can also be applied to generate tabular data. This library introduces major improvements for generating high-fidelity tabular data by offering a diverse suite of cutting-edge models, including Generative Adversarial Networks (GANs), specialized TimeGANs for time-series data, Denoising Diffusion Probabilistic Models (DDPM), and Large Language Model (LLM) based approaches. These enhancements allow for robust data generation across various dataset complexities and distributions, giving an opportunity to try GANs, TimeGANs, Diffusions, and LLMs for tabular data generation.
 * Arxiv article: ["Tabular GANs for uneven distribution"](https://arxiv.org/abs/2010.00638)
-* Medium post: GANs for tabular data [link broken]
+* Medium post: [GANs for tabular data](https://medium.com/data-science/review-of-gans-for-tabular-data-a30a2199342)
 
 ## How to use library
 
