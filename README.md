@@ -52,6 +52,8 @@ All samplers (`OriginalGenerator`, `GANGenerator`, `ForestDiffusionGenerator`, `
         ```python
         {"batch_size": 32, "epochs": 4, "llm": "distilgpt2", "max_length": 500}
         ```
+*   **text_generating_columns**: `list` (default: `None`) - Specific to `LLMGenerator`. A list of column names for which new, plausible text values should be generated (e.g., names, descriptions). Requires `conditional_columns` to be set.
+*   **conditional_columns**: `list` (default: `None`) - Specific to `LLMGenerator`. A list of column names that the generation of `text_generating_columns` should be conditioned upon (e.g., generating names based on gender).
 
 The available samplers are:
 1.  **`GANGenerator`**: Utilizes the Conditional Tabular GAN (CTGAN) architecture, known for effectively modeling tabular data distributions and handling mixed data types (continuous and discrete). It learns the data distribution and generates synthetic samples that mimic the original data.
@@ -113,6 +115,47 @@ new_train_gan_all_params, new_target_gan_all_params = GANGenerator(
     only_adversarial=False,
     use_adversarial=True
 )
+
+# Example for generating new text values with LLMGenerator
+name_train_df = pd.DataFrame({
+    "Name": ["Anna", "Maria", "Ivan", "Sergey", "Elena", "Dmitry"],
+    "Gender": ["F", "F", "M", "M", "F", "M"],
+    "Age": [25, 30, 35, 40, 28, 42]
+})
+name_target_df = pd.DataFrame({"Salary": [50, 60, 70, 80, 55, 85]}) # Example target
+name_test_df = pd.DataFrame({
+    "Name": ["Olga", "Boris"], # Test data for post-processing context if enabled
+    "Gender": ["F", "M"],
+    "Age": [28, 32]
+})
+
+
+# Initialize LLMGenerator for conditional text generation
+# Note: For actual generation, ensure the chosen LLM in gen_params is powerful enough
+# and epochs/batch_size are set appropriately for your dataset size.
+# Smaller models like 'distilgpt2' might require more careful prompt engineering or fine-tuning
+# for high-quality, highly conditional text generation.
+llm_text_generator = LLMGenerator(
+    text_generating_columns=["Name"],
+    conditional_columns=["Gender"],
+    gen_x_times=1, # Generate same number of new samples as original
+    gen_params={"batch_size": 4, "epochs": 1, "llm": "distilgpt2", "max_length": 50}, # Adjust params as needed
+    is_post_process=False # Disable post-processing for this example to focus on generation
+)
+
+# Generate new data. Target can be None if not applicable to your generation task.
+# For LLMGenerator with text generation, target is often not directly used in the text prompting itself,
+# but the GReaT model is still trained on all columns passed in train_df (which includes target if added).
+new_names_df, new_names_target_df = llm_text_generator.generate_data_pipe(
+    name_train_df,
+    name_target_df, # Pass target if you want it in the output and trained GReaT model
+    name_test_df, # test_df is used if is_post_process=True or adversarial filtering is on
+    only_generated_data=True
+)
+
+print("\\nGenerated data with new names:")
+print(new_names_df)
+# print(new_names_target_df) # if target was used
 
 ```
 

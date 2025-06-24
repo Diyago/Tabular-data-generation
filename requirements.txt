@@ -1,13 +1,12 @@
-scipy>=1.4.1
+scipy>=1.12.0
 category_encoders>=2.6.3
-numpy>=1.22.0
 torch>=1.6.0
-pandas>=1.2.2
+pandas>=2.2.0
 lightgbm>=2.2.3
 scikit_learn>=1.5.2
 torchvision>=0.4.2
-numpy>=2.0
-python-dateutil==2.8.1
+numpy>=1.23.1
+python-dateutil>=2.8.2
 tqdm>=4.61.1
 xgboost>=2.0.0
 be-great==0.0.8
