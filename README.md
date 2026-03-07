@@ -2,19 +2,96 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Downloads](https://pepy.tech/badge/tabgan)](https://pepy.tech/project/tabgan)
 
-# GANs and TimeGANs, Diffusions, LLM for tabular  data
+# GANs, TimeGANs, Diffusions and LLMs for Tabular Data
 
 <img src="images/tabular_gan.png" height="15%" width="15%">
 
-Generative Networks are well-known for their success in realistic image generation. However, they can also be applied to generate tabular data. This library introduces major improvements for generating high-fidelity tabular data by offering a diverse suite of cutting-edge models, including Generative Adversarial Networks (GANs), specialized TimeGANs for time-series data, Denoising Diffusion Probabilistic Models (DDPM), and Large Language Model (LLM) based approaches. These enhancements allow for robust data generation across various dataset complexities and distributions, giving an opportunity to try GANs, TimeGANs, Diffusions, and LLMs for tabular data generation.
-* Arxiv article: ["Tabular GANs for uneven distribution"](https://arxiv.org/abs/2010.00638)
-* Medium post: GANs for tabular data [link broken]
+`tabgan` is a library for **high‑fidelity tabular data generation**.  
+It provides a unified interface over several state‑of‑the‑art generative approaches:
+
+- **GANs** (CTGAN‑style architectures) for mixed continuous / categorical data  
+- **TimeGAN‑style workflows** for time‑series tabular data  
+- **Diffusion models** via Forest Diffusion for complex tabular structures  
+- **LLM‑based generators** (GReaT‑style) for realistic and conditional tabular text
+
+These models allow you to:
+
+- **Augment training data** for better downstream model performance
+- **Handle class imbalance** by oversampling rare classes
+- **Generate privacy‑preserving synthetic datasets**
+- **Prototype quickly** with simple, high‑level APIs
+
+- Arxiv article: ["Tabular GANs for uneven distribution"](https://arxiv.org/abs/2010.00638)
+
+---
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Quickstart](#quickstart)
+- [Data Format](#data-format)
+- [Samplers Overview](#samplers-overview)
+- [`generate_data_pipe` API](#generatedata_pipe-api)
+- [Extended Examples](#extended-examples)
+  - [LLM‑based text generation](#llm-based-text-generation)
+  - [Improving downstream model quality](#improving-downstream-model-quality)
+  - [Time‑series style usage](#time-series-style-usage)
+- [Experiments](#experiments)
+- [Results](#results)
+- [Citation](#citation)
+- [References](#references)
+
+---
+
+## Installation
+
+- **From PyPI** (recommended):
+
+```bash
+pip install tabgan
+```
+
+- **From source**:
+
+```bash
+git clone https://github.com/diyago/tabular-data-generation.git
+cd tabular-data-generation
+pip install -r requirements.txt
+pip install -e .
+```
+
+---
+
+## Quickstart
+
+Generate synthetic training data using different samplers with a single, unified API:
+
+```python
+from tabgan.sampler import OriginalGenerator, GANGenerator, ForestDiffusionGenerator, LLMGenerator
+import pandas as pd
+import numpy as np
+
+# random input data
+train = pd.DataFrame(np.random.randint(-10, 150, size=(150, 4)), columns=list("ABCD"))
+target = pd.DataFrame(np.random.randint(0, 2, size=(150, 1)), columns=list("Y"))
+test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list("ABCD"))
+
+# generate data
+new_train1, new_target1 = OriginalGenerator().generate_data_pipe(train, target, test)
+new_train2, new_target2 = GANGenerator(
+    gen_params={"batch_size": 500, "epochs": 10, "patience": 5}
+).generate_data_pipe(train, target, test)
+new_train3, new_target3 = ForestDiffusionGenerator().generate_data_pipe(train, target, test)
+new_train4, new_target4 = LLMGenerator(
+    gen_params={"batch_size": 32, "epochs": 4, "llm": "distilgpt2", "max_length": 500}
+).generate_data_pipe(train, target, test)
+```
+
+---
 
 ## How to use library
 
-* Installation: `pip install tabgan`
-* To generate new data to train by sampling and then filtering by adversarial training
-  call `GANGenerator().generate_data_pipe`.
+To generate new data by sampling and then filtering via adversarial training, call `*.generate_data_pipe` on one of the samplers described below.
 
 ### Data Format
 
@@ -177,8 +254,8 @@ print("initial metric", fit_predict(clf, X_train, y_train, X_test, y_test))
 new_train1, new_target1 = OriginalGenerator().generate_data_pipe(X_train, y_train, X_test, )
 print("OriginalGenerator metric", fit_predict(clf, new_train1, new_target1, X_test, y_test))
 
-new_train1, new_target1 = GANGenerator().generate_data_pipe(X_train, y_train, X_test, )
-print("GANGenerator metric", fit_predict(clf, new_train2, new_target2, X_test, y_test)) # Corrected variable name
+new_train2, new_target2 = GANGenerator().generate_data_pipe(X_train, y_train, X_test, )
+print("GANGenerator metric", fit_predict(clf, new_train2, new_target2, X_test, y_test))
 ```
 
 ### Advanced Usage: Generating Time-Series Data with TimeGAN
