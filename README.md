@@ -2,94 +2,19 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Downloads](https://pepy.tech/badge/tabgan)](https://pepy.tech/project/tabgan)
 
-# GANs, TimeGANs, Diffusions and LLMs for Tabular Data
+# GANs and TimeGANs, Diffusions, LLM for tabular  data
 
 <img src="images/tabular_gan.png" height="15%" width="15%">
 
-> **High‑fidelity synthetic tabular data with GANs, diffusion, and LLMs.**
-
-`tabgan` turns your real tables into realistic **synthetic tabular datasets** for modeling, privacy, and experimentation.  
-Under the hood it combines CTGAN‑style GANs, Forest Diffusion, TimeGAN‑style workflows, and GReaT‑style LLM generators behind a single, high‑level API.  
-It is built for **ML engineers** shipping models, **privacy & governance teams** who must protect sensitive data, and **Kaggle competitors** who need more signal without leaking the real thing.
-
-With `tabgan` you can:
-
-- **Augment training data** for better downstream model performance
-- **Handle class imbalance** by oversampling rare classes
-- **Generate privacy‑preserving synthetic datasets**
-- **Prototype quickly** with simple, high‑level APIs
-
-- Arxiv article: ["Tabular GANs for uneven distribution"](https://arxiv.org/abs/2010.00638)
-
----
-
-## Table of Contents
-
-- [Installation](#installation)
-- [Quickstart](#quickstart)
-- [Data Format](#data-format)
-- [Samplers Overview](#samplers-overview)
-- [`generate_data_pipe` API](#generatedata_pipe-api)
-- [Extended Examples](#extended-examples)
-  - [LLM‑based text generation](#llm-based-text-generation)
-  - [Improving downstream model quality](#improving-downstream-model-quality)
-  - [Time‑series style usage](#time-series-style-usage)
-- [Experiments](#experiments)
-- [Results](#results)
-- [Citation](#citation)
-- [References](#references)
-
----
-
-## Installation
-
-- **From PyPI** (recommended):
-
-```bash
-pip install tabgan
-```
-
-- **From source**:
-
-```bash
-git clone https://github.com/diyago/tabular-data-generation.git
-cd tabular-data-generation
-pip install -r requirements.txt
-pip install -e .
-```
-
----
-
-## Quickstart
-
-Generate synthetic training data using different samplers with a single, unified API:
-
-```python
-from tabgan.sampler import OriginalGenerator, GANGenerator, ForestDiffusionGenerator, LLMGenerator
-import pandas as pd
-import numpy as np
-
-# random input data
-train = pd.DataFrame(np.random.randint(-10, 150, size=(150, 4)), columns=list("ABCD"))
-target = pd.DataFrame(np.random.randint(0, 2, size=(150, 1)), columns=list("Y"))
-test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list("ABCD"))
-
-# generate data
-new_train1, new_target1 = OriginalGenerator().generate_data_pipe(train, target, test)
-new_train2, new_target2 = GANGenerator(
-    gen_params={"batch_size": 500, "epochs": 10, "patience": 5}
-).generate_data_pipe(train, target, test)
-new_train3, new_target3 = ForestDiffusionGenerator().generate_data_pipe(train, target, test)
-new_train4, new_target4 = LLMGenerator(
-    gen_params={"batch_size": 32, "epochs": 4, "llm": "distilgpt2", "max_length": 500}
-).generate_data_pipe(train, target, test)
-```
-
----
+Generative Networks are well-known for their success in realistic image generation. However, they can also be applied to generate tabular data. This library introduces major improvements for generating high-fidelity tabular data by offering a diverse suite of cutting-edge models, including Generative Adversarial Networks (GANs), specialized TimeGANs for time-series data, Denoising Diffusion Probabilistic Models (DDPM), and Large Language Model (LLM) based approaches. These enhancements allow for robust data generation across various dataset complexities and distributions, giving an opportunity to try GANs, TimeGANs, Diffusions, and LLMs for tabular data generation.
+* Arxiv article: ["Tabular GANs for uneven distribution"](https://arxiv.org/abs/2010.00638)
+* Medium post: GANs for tabular data [link broken]
 
 ## How to use library
 
-To generate new data by sampling and then filtering via adversarial training, call `*.generate_data_pipe` on one of the samplers described below.
+* Installation: `pip install tabgan`
+* To generate new data to train by sampling and then filtering by adversarial training
+  call `GANGenerator().generate_data_pipe`.
 
 ### Data Format
 
@@ -127,8 +52,6 @@ All samplers (`OriginalGenerator`, `GANGenerator`, `ForestDiffusionGenerator`, `
         ```python
         {"batch_size": 32, "epochs": 4, "llm": "distilgpt2", "max_length": 500}
         ```
-*   **text_generating_columns**: `list` (default: `None`) - Specific to `LLMGenerator`. A list of column names for which new, plausible text values should be generated (e.g., names, descriptions). Requires `conditional_columns` to be set.
-*   **conditional_columns**: `list` (default: `None`) - Specific to `LLMGenerator`. A list of column names that the generation of `text_generating_columns` should be conditioned upon (e.g., generating names based on gender).
 
 The available samplers are:
 1.  **`GANGenerator`**: Utilizes the Conditional Tabular GAN (CTGAN) architecture, known for effectively modeling tabular data distributions and handling mixed data types (continuous and discrete). It learns the data distribution and generates synthetic samples that mimic the original data.
@@ -191,47 +114,6 @@ new_train_gan_all_params, new_target_gan_all_params = GANGenerator(
     use_adversarial=True
 )
 
-# Example for generating new text values with LLMGenerator
-name_train_df = pd.DataFrame({
-    "Name": ["Anna", "Maria", "Ivan", "Sergey", "Elena", "Dmitry"],
-    "Gender": ["F", "F", "M", "M", "F", "M"],
-    "Age": [25, 30, 35, 40, 28, 42]
-})
-name_target_df = pd.DataFrame({"Salary": [50, 60, 70, 80, 55, 85]}) # Example target
-name_test_df = pd.DataFrame({
-    "Name": ["Olga", "Boris"], # Test data for post-processing context if enabled
-    "Gender": ["F", "M"],
-    "Age": [28, 32]
-})
-
-
-# Initialize LLMGenerator for conditional text generation
-# Note: For actual generation, ensure the chosen LLM in gen_params is powerful enough
-# and epochs/batch_size are set appropriately for your dataset size.
-# Smaller models like 'distilgpt2' might require more careful prompt engineering or fine-tuning
-# for high-quality, highly conditional text generation.
-llm_text_generator = LLMGenerator(
-    text_generating_columns=["Name"],
-    conditional_columns=["Gender"],
-    gen_x_times=1, # Generate same number of new samples as original
-    gen_params={"batch_size": 4, "epochs": 1, "llm": "distilgpt2", "max_length": 50}, # Adjust params as needed
-    is_post_process=False # Disable post-processing for this example to focus on generation
-)
-
-# Generate new data. Target can be None if not applicable to your generation task.
-# For LLMGenerator with text generation, target is often not directly used in the text prompting itself,
-# but the GReaT model is still trained on all columns passed in train_df (which includes target if added).
-new_names_df, new_names_target_df = llm_text_generator.generate_data_pipe(
-    name_train_df,
-    name_target_df, # Pass target if you want it in the output and trained GReaT model
-    name_test_df, # test_df is used if is_post_process=True or adversarial filtering is on
-    only_generated_data=True
-)
-
-print("\\nGenerated data with new names:")
-print(new_names_df)
-# print(new_names_target_df) # if target was used
-
 ```
 
 Thus, you may use this library to improve your dataset quality:
@@ -252,8 +134,8 @@ print("initial metric", fit_predict(clf, X_train, y_train, X_test, y_test))
 new_train1, new_target1 = OriginalGenerator().generate_data_pipe(X_train, y_train, X_test, )
 print("OriginalGenerator metric", fit_predict(clf, new_train1, new_target1, X_test, y_test))
 
-new_train2, new_target2 = GANGenerator().generate_data_pipe(X_train, y_train, X_test, )
-print("GANGenerator metric", fit_predict(clf, new_train2, new_target2, X_test, y_test))
+new_train1, new_target1 = GANGenerator().generate_data_pipe(X_train, y_train, X_test, )
+print("GANGenerator metric", fit_predict(clf, new_train2, new_target2, X_test, y_test)) # Corrected variable name
 ```
 
 ### Advanced Usage: Generating Time-Series Data with TimeGAN
