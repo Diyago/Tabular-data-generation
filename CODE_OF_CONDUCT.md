@@ -6,18 +6,20 @@
 * To get listed tags
 `git tag`
 
-* To set a current commit a tag `git tag 0.1.3`
+* To set a current commit a tag `git tag 2.6.0`
 * Pushing tags to repository `git push origin --tags`
 
-3. Building new distributive: `python setup.py bdist_wheel`
-   * If generated file under `./dist` folder contains `.dirty` like this: `'tabgan-0.1.3+g5249cf6.dirty`
- you should fix that! In order to do that, you should look for uncommitted files: `git status`
+3. Building new distributive: `python -m build`
+   * This creates both wheel and source distribution in `./dist`
+   * Or use `pip wheel . -w dist --no-deps` for wheel only
+   * If build fails, ensure all changes are committed: `git status`
 
 4. Uploading project to test PIP:
 `twine upload --repository testpypi dist/* --verbose`
    
 5. Uploading project to prod PIP:
-`twine upload --repository pypi dist/* --verbose`
+`twine upload dist/* --verbose`
+   * Or set token via environment variable: `$env:TWINE_PASSWORD = "pypi-..."; twine upload dist/*`
 
 # Contributor Covenant Code of Conduct
 
