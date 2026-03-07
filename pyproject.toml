@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools-scm[toml]>=6.2", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tabgan"
+version = "2.6.0"
+description = "Applying GAN in tabular data generation for uneven distribution"
+readme = "pip_desc.md"
+license = {text = "Apache License 2.0"}
+authors = [
+    {name = "Insaf Ashrapov", email = "iashrapov@gmail.com"}
+]
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Programming Language :: Python",
+]
+dependencies = [
+    "pandas",
+    "numpy>=2.0",
+    "category_encoders",
+    "torch>=1.0",
+    "lightgbm>=2.2.3",
+    "scikit_learn>=1.5.2",
+    "torchvision",
+    "python-dateutil",
+    "tqdm",
+    "xgboost",
+    "be-great>=0.0.13",
+]
+
+[project.scripts]
+tabgan-generate = "tabgan.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
