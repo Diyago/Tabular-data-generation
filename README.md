@@ -4,7 +4,6 @@
 [![Python Version](https://img.shields.io/pypi/pyversions/tabgan)](https://pypi.org/project/tabgan/)
 [![PyPI Version](https://img.shields.io/pypi/v/tabgan.svg)](https://pypi.org/project/tabgan/)
 [![Downloads](https://pepy.tech/badge/tabgan)](https://pepy.tech/project/tabgan)
-[![Build Status](https://github.com/diyago/Tabular-data-generation/workflows/Python%20Coverage/badge.svg)](https://github.com/diyago/Tabular-data-generation/actions)
 [![CodeQL](https://github.com/diyago/Tabular-data-generation/workflows/CodeQL/badge.svg)](https://github.com/diyago/Tabular-data-generation/actions/workflows/codeql.yml)
 
 # TabGAN - Synthetic Tabular Data Generation
