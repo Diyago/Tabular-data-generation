@@ -6,15 +6,13 @@
 
 <img src="images/tabular_gan.png" height="15%" width="15%">
 
-`tabgan` is a library for **high‑fidelity tabular data generation**.  
-It provides a unified interface over several state‑of‑the‑art generative approaches:
+> **High‑fidelity synthetic tabular data with GANs, diffusion, and LLMs.**
 
-- **GANs** (CTGAN‑style architectures) for mixed continuous / categorical data  
-- **TimeGAN‑style workflows** for time‑series tabular data  
-- **Diffusion models** via Forest Diffusion for complex tabular structures  
-- **LLM‑based generators** (GReaT‑style) for realistic and conditional tabular text
+`tabgan` turns your real tables into realistic **synthetic tabular datasets** for modeling, privacy, and experimentation.  
+Under the hood it combines CTGAN‑style GANs, Forest Diffusion, TimeGAN‑style workflows, and GReaT‑style LLM generators behind a single, high‑level API.  
+It is built for **ML engineers** shipping models, **privacy & governance teams** who must protect sensitive data, and **Kaggle competitors** who need more signal without leaking the real thing.
 
-These models allow you to:
+With `tabgan` you can:
 
 - **Augment training data** for better downstream model performance
 - **Handle class imbalance** by oversampling rare classes
