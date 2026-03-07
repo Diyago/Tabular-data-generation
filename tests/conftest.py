@@ -1,11 +1,21 @@
 # -*- coding: utf-8 -*-
 """
-    Dummy conftest.py for tabgan.
+Test configuration for tabgan.
 
-    If you don't know what this is for, just leave it empty.
-    Read more about conftest.py under:
-    - https://docs.pytest.org/en/stable/fixture.html
-    - https://docs.pytest.org/en/stable/writing_plugins.html
+We ensure that the project `src` directory is on ``sys.path`` so that both
+``src.tabgan`` and sibling top-level packages such as ``_ForestDiffusion``
+are importable when running tests from the repository root.
 """
 
-# import pytest
+import os
+import sys
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SRC_PATH = PROJECT_ROOT / "src"
+
+src_str = os.fspath(SRC_PATH)
+if src_str not in sys.path:
+    sys.path.insert(0, src_str)
+

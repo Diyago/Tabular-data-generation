@@ -20,6 +20,11 @@ def test_tabgan_generate_cli_creates_output_with_target():
         )
         df.to_csv(input_path, index=False)
 
+        # Set up environment with PYTHONPATH pointing to src directory
+        env = os.environ.copy()
+        src_path = os.path.join(os.path.dirname(__file__), "..", "src")
+        env["PYTHONPATH"] = src_path + os.pathsep + env.get("PYTHONPATH", "")
+
         # Invoke the installed console script through Python -m to avoid PATH issues in CI
         cmd = [
             sys.executable,
@@ -37,7 +42,7 @@ def test_tabgan_generate_cli_creates_output_with_target():
             output_path,
         ]
 
-        result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+        result = subprocess.run(cmd, check=False, capture_output=True, text=True, env=env)
 
         assert result.returncode == 0, f"CLI failed: {result.stderr}"
         assert os.path.exists(output_path), "Output CSV was not created by CLI"

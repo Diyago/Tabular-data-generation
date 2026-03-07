@@ -83,7 +83,35 @@ class SampleData(ABC):
 
 
 class Sampler(ABC):
-    """Interface for each sampling strategy"""
+    """Interface for each sampling strategy.
+
+    Concrete sampler implementations share a common configuration interface
+    (generation factor, categorical columns, post-processing flags, etc.).
+    This base ``__init__`` stores those shared parameters so that subclasses
+    can call ``super().__init__(...)`` and focus on strategy-specific logic.
+    """
+
+    def __init__(
+        self,
+        gen_x_times: float,
+        cat_cols: list | None,
+        bot_filter_quantile: float,
+        top_filter_quantile: float,
+        is_post_process: bool,
+        adversarial_model_params: dict,
+        pregeneration_frac: float,
+        only_generated_data: bool,
+        gen_params: dict | None = None,
+    ) -> None:
+        self.gen_x_times = gen_x_times
+        self.cat_cols = cat_cols
+        self.bot_filter_quantile = bot_filter_quantile
+        self.top_filter_quantile = top_filter_quantile
+        self.is_post_process = is_post_process
+        self.adversarial_model_params = adversarial_model_params
+        self.pregeneration_frac = pregeneration_frac
+        self.only_generated_data = only_generated_data
+        self.gen_params = gen_params or {}
 
     def get_generated_shape(self, input_df):
         """Calculates final output shape"""

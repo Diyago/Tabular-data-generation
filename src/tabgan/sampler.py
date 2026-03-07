@@ -559,7 +559,13 @@ class SamplerLLM(SamplerOriginal):
                 device=device,
             )
 
-        return self.handle_generated_data(train_df, generated_df, only_generated_data)
+        # When a target is provided, ``current_train_df`` already includes the
+        # TEMP_TARGET column and represents the true training frame used for
+        # generation. Passing it to ``handle_generated_data`` keeps feature and
+        # target alignment consistent for both conditional and standard LLM
+        # sampling paths.
+        base_train_for_handling = current_train_df if target is not None else train_df
+        return self.handle_generated_data(base_train_for_handling, generated_df, only_generated_data)
 
     def _generate_via_prompt(self, prompt: str, great_model_instance, device: str, max_tokens_to_generate=50) -> str:
         """
