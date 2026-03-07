@@ -15,6 +15,8 @@ from tabgan.abc_sampler import Sampler, SampleData
 from tabgan.adversarial_model import AdversarialModel
 from tabgan.utils import setup_logging, _drop_col_if_exist, \
     get_columns_if_exists, _sampler, get_year_mnth_dt_from_date, collect_dates
+from tabgan.llm_config import LLMAPIConfig
+from tabgan.llm_api_client import LLMAPIClient
 
 warnings.filterwarnings("ignore")
 
@@ -82,6 +84,7 @@ class SamplerOriginal(Sampler):
             gen_params: dict = {"batch_size": 45, 'patience': 25, "epochs": 50, "llm": "distilgpt2"},
             text_generating_columns: list = None,
             conditional_columns: list = None,
+            llm_api_config: LLMAPIConfig = None,
     ):
         """
         Initialize an original sampler configuration.
@@ -113,6 +116,10 @@ class SamplerOriginal(Sampler):
                 text values should be generated (used by `SamplerLLM`).
             conditional_columns (list | None): Column names that condition
                 text generation for `text_generating_columns`.
+            llm_api_config (LLMAPIConfig | None): Configuration for external LLM
+                API-based text generation. When provided, text generation will use
+                the API instead of the local model. Useful for LM Studio, Ollama,
+                OpenAI, etc.
         """
         super().__init__(
             gen_x_times=gen_x_times,
@@ -127,6 +134,7 @@ class SamplerOriginal(Sampler):
         )
         self.text_generating_columns = text_generating_columns
         self.conditional_columns = conditional_columns
+        self.llm_api_config = llm_api_config
         if not hasattr(self, "TEMP_TARGET"):
             self.TEMP_TARGET = "TEMP_TARGET"
 

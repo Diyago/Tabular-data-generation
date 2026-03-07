@@ -2,7 +2,10 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python Version](https://img.shields.io/pypi/pyversions/tabgan)](https://pypi.org/project/tabgan/)
+[![PyPI Version](https://img.shields.io/pypi/v/tabgan.svg)](https://pypi.org/project/tabgan/)
 [![Downloads](https://pepy.tech/badge/tabgan)](https://pepy.tech/project/tabgan)
+[![Build Status](https://github.com/diyago/Tabular-data-generation/workflows/Python%20Coverage/badge.svg)](https://github.com/diyago/Tabular-data-generation/actions)
+[![CodeQL](https://github.com/diyago/Tabular-data-generation/workflows/CodeQL/badge.svg)](https://github.com/diyago/Tabular-data-generation/actions/workflows/codeql.yml)
 
 # TabGAN - Synthetic Tabular Data Generation
 
@@ -12,14 +15,23 @@ A powerful library for generating high-quality synthetic tabular data using stat
 
 ## Overview
 
-TabGAN provides a unified interface for generating synthetic tabular data using multiple generative approaches:
+TabGAN is a comprehensive Python library that provides a unified interface for generating high-quality synthetic tabular data. It integrates multiple state-of-the-art generative approaches to address diverse data synthesis requirements:
 
-- **GANs**: Conditional Tabular GAN (CTGAN) for modeling complex tabular distributions
-- **Diffusion Models**: Forest Diffusion for high-quality synthetic data generation
-- **LLMs**: GReaT framework for generating realistic tabular data using language models
-- **Time-Series**: TimeGAN support for temporal data generation
+- **GANs**: Conditional Tabular GAN (CTGAN) for modeling complex multivariate distributions with mixed data types
+- **Diffusion Models**: Forest Diffusion for high-fidelity synthetic data generation with tree-based gradient boosting
+- **LLMs**: GReaT (Generative Realistic Tabular data) framework leveraging language models for realistic tabular data synthesis
+- **Time-Series**: TimeGAN support for temporal data generation preserving sequential dependencies
 
-*Related Research: [Tabular GANs for uneven distribution (arXiv)](https://arxiv.org/abs/2010.00638)*
+*Related Research: [Tabular GANs for uneven distribution (arXiv:2010.00638)](https://arxiv.org/abs/2010.00638)*
+
+## Key Features
+
+- **Multiple Generative Architectures**: Seamlessly switch between GANs, Diffusion Models, and LLMs via a unified API
+- **Adversarial Filtering**: Built-in adversarial validation to ensure synthetic data preserves predictive utility
+- **Mixed Data Type Support**: Native handling of continuous, categorical, and text columns
+- **Conditional Generation**: Generate data conditioned on specific column values or distributions
+- **Scalable Processing**: Efficient batch processing for large-scale datasets
+- **Quality Validation**: Integrated metrics for comparing synthetic against original data distributions
 
 ## Installation
 
@@ -96,12 +108,12 @@ All generators accept these common parameters:
 
 ## Data Format
 
-TabGAN accepts `numpy.ndarray` or `pandas.DataFrame` with:
+TabGAN accepts both `numpy.ndarray` and `pandas.DataFrame` inputs, supporting:
 
-- **Continuous Columns**: Numerical columns with any possible value
-- **Discrete Columns**: Columns with limited set values (categorical)
+- **Continuous Variables**: Numerical columns with any real-valued data
+- **Categorical Variables**: Discrete columns with a finite set of possible values
 
-> **Note:** TabGAN treats all values as floats. For integers, round the output after generation.
+> **Note:** TabGAN internally processes all values as floating-point numbers. For integer-valued outputs, apply rounding after generation.
 
 ## Examples
 
@@ -190,6 +202,95 @@ The model will:
 3. Generate novel text for text columns via prompt-based generation (using `_generate_via_prompt`)
 4. Ensure generated text values are unique (not present in original data)
 
+### LLM API-Based Text Generation
+
+Use external LLM APIs (LM Studio, OpenAI, Ollama) for text generation instead of local models. This allows you to leverage powerful models running on remote servers or local API endpoints.
+
+```python
+import pandas as pd
+from tabgan.sampler import LLMGenerator
+from tabgan.llm_config import LLMAPIConfig
+
+# Create sample data
+train = pd.DataFrame({
+    "Name": ["Anna", "Maria", "Ivan", "Sergey", "Olga", "Boris"],
+    "Gender": ["F", "F", "M", "M", "F", "M"],
+    "Age": [25, 30, 35, 40, 28, 32],
+    "Occupation": ["Engineer", "Doctor", "Artist", "Teacher", "Manager", "Pilot"]
+})
+
+# Configure API connection (LM Studio example)
+api_config = LLMAPIConfig.from_lm_studio(
+    base_url="http://localhost:1234",
+    model="google/gemma-3-12b",
+    timeout=90
+)
+
+# Or use OpenAI
+# api_config = LLMAPIConfig.from_openai(
+#     api_key="your-api-key",
+#     model="gpt-4"
+# )
+
+# Or use Ollama
+# api_config = LLMAPIConfig.from_ollama(
+#     base_url="http://localhost:11434",
+#     model="llama3"
+# )
+
+# Generate with API-based text generation
+new_train, _ = LLMGenerator(
+    gen_x_times=1.5,
+    text_generating_columns=["Name"],
+    conditional_columns=["Gender"],
+    gen_params={"batch_size": 32, "epochs": 4, "llm": "distilgpt2", "max_length": 500},
+    llm_api_config=api_config,  # Use external API for text generation
+    is_post_process=False
+).generate_data_pipe(
+    train,
+    target=None,
+    test_df=None,
+    only_generated_data=True
+)
+
+print(new_train)
+```
+
+**Configuration Options:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `base_url` | str | `"http://localhost:1234"` | Base URL for the API server |
+| `model` | str | `"google/gemma-3-12b"` | Model identifier to use |
+| `api_key` | str | None | API key for authentication (OpenAI, etc.) |
+| `timeout` | int | 90 | Request timeout in seconds |
+| `max_tokens` | int | 256 | Maximum tokens to generate |
+| `temperature` | float | 0.7 | Sampling temperature (0.0-2.0) |
+| `system_prompt` | str | None | System prompt to guide generation |
+
+**Supported API Providers:**
+- **LM Studio**: Local LLM server with OpenAI-compatible API
+- **OpenAI**: GPT-4, GPT-3.5, and other OpenAI models
+- **Ollama**: Local LLM server for running open-source models
+- **Any OpenAI-compatible API**: Custom endpoints with compatible schema
+
+**Testing API Connection:**
+
+```python
+from tabgan.llm_config import LLMAPIConfig
+from tabgan.llm_api_client import LLMAPIClient
+
+# Test if API is accessible
+config = LLMAPIConfig.from_lm_studio()
+with LLMAPIClient(config) as client:
+    is_connected = client.check_connection()
+    print(f"API available: {is_connected}")
+    
+    # Generate text directly
+    text = client.generate("Generate a female name: ")
+    print(f"Generated: {text}")
+```
+
 ### Improving Model Performance
 
 ```python
@@ -241,14 +342,16 @@ new_train = collect_dates(new_train)
 
 ## Data Quality Validation
 
-Check generated data quality using the built-in function:
+Validate the statistical fidelity of generated data using the built-in evaluation utilities:
 
 ```python
 from tabgan.utils import compare_dataframes
 
-quality_score = compare_dataframes(original_df, generated_df)  # Returns value between 0 and 1
+# Returns a quality score between 0 (low fidelity) and 1 (high fidelity)
+quality_score = compare_dataframes(original_df, generated_df)
 ```
-### Experiment Workflow
+
+### Experimental Workflow
 
 ![Experiment design and workflow](images/workflow.png)
 
