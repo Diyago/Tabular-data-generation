@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import numpy as np
 import warnings
 from typing import Tuple
 
-import numpy as np
 import pandas as pd
 import torch
 from be_great import GReaT
@@ -80,34 +80,55 @@ class SamplerOriginal(Sampler):
             pregeneration_frac: float = 2,
             only_generated_data: bool = False,
             gen_params: dict = {"batch_size": 45, 'patience': 25, "epochs": 50, "llm": "distilgpt2"},
+            text_generating_columns: list = None,
+            conditional_columns: list = None,
     ):
         """
+        Initialize an original sampler configuration.
 
-        @param gen_x_times: float = 1.1 - how much data to generate, output might be less because of postprocessing and
-        adversarial filtering
-        @param cat_cols: list = None - categorical columns
-        @param bot_filter_quantile: float = 0.001 - bottom quantile for postprocess filtering
-        @param top_filter_quantile: float = 0.999 - top quantile for postprocess filtering
-        @param is_post_process: bool = True - perform or not postfiltering, if false bot_filter_quantile
-         and top_filter_quantile ignored
-        @param adversarial_model_params: dict params for adversarial filtering model, default values for binary task
-        @param pregeneration_frac: float = 2 - for generation step gen_x_times * pregeneration_frac amount of data
-        will be generated. However, in postprocessing (1 + gen_x_times) % of original data will be returned
-        @param only_generated_data: bool = False If True after generation get only newly generated, without
-        concatenating input train dataframe.
-        @param gen_params: dict params for GAN training. Only works for SamplerGAN, ForestDiffusionGenerator,
-        LLMGenerator.
+        Args:
+            gen_x_times (float): Factor controlling how many synthetic samples
+                to generate relative to the training size. The final amount
+                can be smaller after post-processing and adversarial filtering.
+            cat_cols (list | None): Names of categorical columns in the
+                training data.
+            bot_filter_quantile (float): Lower quantile used for numeric
+                post-processing filters.
+            top_filter_quantile (float): Upper quantile used for numeric
+                post-processing filters.
+            is_post_process (bool): Whether to apply post-processing filters
+                based on the distribution of `test_df`. If False, the
+                quantile-based filters are skipped.
+            adversarial_model_params (dict): Parameters for the adversarial
+                filtering model used to keep generated samples close to the
+                test distribution.
+            pregeneration_frac (float): Oversampling factor applied before
+                post-processing. The final number of rows is derived from
+                `gen_x_times`.
+            only_generated_data (bool): If True, return only synthetic rows.
+                If False, append generated rows to the original training data.
+            gen_params (dict): Model-specific generation parameters shared by
+                subclasses (GAN, ForestDiffusion, LLM).
+            text_generating_columns (list | None): Column names for which new
+                text values should be generated (used by `SamplerLLM`).
+            conditional_columns (list | None): Column names that condition
+                text generation for `text_generating_columns`.
         """
-        self.gen_x_times = gen_x_times
-        self.cat_cols = cat_cols
-        self.is_post_process = is_post_process
-        self.bot_filter_quantile = bot_filter_quantile
-        self.top_filter_quantile = top_filter_quantile
-        self.adversarial_model_params = adversarial_model_params
-        self.pregeneration_frac = pregeneration_frac
-        self.only_generated_data = only_generated_data
-        self.gen_params = gen_params
-        self.TEMP_TARGET = "TEMP_TARGET"
+        super().__init__(
+            gen_x_times=gen_x_times,
+            cat_cols=cat_cols,
+            bot_filter_quantile=bot_filter_quantile,
+            top_filter_quantile=top_filter_quantile,
+            is_post_process=is_post_process,
+            adversarial_model_params=adversarial_model_params,
+            pregeneration_frac=pregeneration_frac,
+            only_generated_data=only_generated_data,
+            gen_params=gen_params,
+        )
+        self.text_generating_columns = text_generating_columns
+        self.conditional_columns = conditional_columns
+        if not hasattr(self, "TEMP_TARGET"):
+            self.TEMP_TARGET = "TEMP_TARGET"
 
     @staticmethod
     def preprocess_data_df(df) -> pd.DataFrame:
@@ -244,27 +265,26 @@ class SamplerOriginal(Sampler):
 
     def handle_generated_data(self, train_df, generated_df, only_generated_data):
         """
-        Integrates synthetic data with the original dataset by preserving data types
-        and structural alignment.
+        Align and optionally merge generated rows with the original training data.
 
-        This method transforms generated data to match the original dataset's structure
-        and types. It can either combine synthetic with original data or return only
-        the synthetic data.
+        The generated data is cast to the dtypes and column order of `train_df`
+        so that downstream models receive data with a consistent schema.
 
         Args:
-            train_df: The original dataset that defines the expected structure
-            generated_df: The synthetic data to be processed
-            only_generated_data: Boolean flag to return only synthetic data
+            train_df (pd.DataFrame): Original training data used to infer the
+                schema and target column.
+            generated_df (pd.DataFrame or array-like): Newly generated
+                samples to be aligned with `train_df`.
+            only_generated_data (bool): If True, return only synthetic rows;
+                otherwise, append them to `train_df` before returning.
 
         Returns:
-            A tuple containing:
-            - Feature matrix (with or without original data)
-            - Corresponding target vector
+            Tuple[pd.DataFrame, pd.Series | pd.DataFrame]: Features and
+            corresponding target values.
         """
         generated_df = pd.DataFrame(generated_df)
         generated_df.columns = train_df.columns
 
-        # Preserve original data types
         for column_index in range(len(generated_df.columns)):
             target_column = generated_df.columns[column_index]
             generated_df[target_column] = generated_df[target_column].astype(
@@ -373,25 +393,231 @@ class SamplerLLM(SamplerOriginal):
                     self.gen_params["epochs"]))
             self.gen_params["epochs"] = 3
 
+    def _build_training_frame(self, train_df: pd.DataFrame, target: pd.DataFrame | None) -> pd.DataFrame:
+        """
+        Return a copy of the training frame with TEMP_TARGET attached when a target is provided.
+        """
+        current_train_df = train_df.copy()
+        if target is not None:
+            current_train_df[self.TEMP_TARGET] = target
+        return current_train_df
+
+    def _fit_great_model(self, current_train_df: pd.DataFrame):
+        """
+        Fit a GReaT model on the provided training frame and return the instance and inference device.
+        """
+        logging.info("Fitting LLM model")
+        is_fp16 = torch.cuda.is_available()
+        try:
+            from be_great import GReaT
+        except ImportError:
+            raise ImportError("be_great library is not installed. Please install it to use LLMGenerator.")
+
+        great_model_instance = GReaT(
+            llm=self.gen_params["llm"],
+            batch_size=self.gen_params["batch_size"],
+            epochs=self.gen_params["epochs"],
+            fp16=is_fp16,
+        )
+        great_model_instance.fit(current_train_df)
+        logging.info("Finished training LLM model")
+
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        return great_model_instance, device
+
+    def _conditional_text_generation(
+        self,
+        great_model_instance,
+        current_train_df: pd.DataFrame,
+        train_df: pd.DataFrame,
+        target: pd.DataFrame | None,
+        device: str,
+    ) -> pd.DataFrame:
+        """
+        Generate rows when text and conditional columns are specified.
+        """
+        logging.info("Starting conditional generation of text columns.")
+        num_samples_to_generate = int(self.gen_x_times * train_df.shape[0])
+
+        original_unique_text_values: dict[str, set] = {}
+        for col in self.text_generating_columns:
+            if col not in current_train_df.columns:
+                raise ValueError(f"Text generating column '{col}' not found in training data.")
+            original_unique_text_values[col] = set(current_train_df[col].unique())
+
+        attribute_distributions: dict[str, pd.Series] = {}
+        for col in self.conditional_columns:
+            if col not in current_train_df.columns:
+                raise ValueError(f"Conditional column '{col}' not found in training data.")
+            attribute_distributions[col] = current_train_df[col].value_counts(normalize=True)
+
+        generated_rows: list[dict] = []
+        all_train_columns = current_train_df.columns.tolist()
+
+        for _ in range(num_samples_to_generate):
+            current_row_data: dict = {}
+
+            for attr_col in self.conditional_columns:
+                dist = attribute_distributions[attr_col]
+                current_row_data[attr_col] = np.random.choice(dist.index, p=dist.values)
+
+            row_template_for_impute = pd.DataFrame(columns=all_train_columns, index=[0])
+            for col in all_train_columns:
+                if col in current_row_data:
+                    row_template_for_impute.loc[0, col] = current_row_data[col]
+                elif col not in self.text_generating_columns:
+                    row_template_for_impute.loc[0, col] = np.nan
+
+            imputed_full_row_df = great_model_instance.impute(
+                row_template_for_impute.copy(),
+                max_length=self.gen_params.get("max_length", 500),
+            )
+
+            for col in all_train_columns:
+                if col not in self.text_generating_columns and col not in current_row_data:
+                    current_row_data[col] = imputed_full_row_df.loc[0, col]
+
+            for text_col in self.text_generating_columns:
+                prompt_parts: list[str] = []
+                for cond_col in self.conditional_columns:
+                    prompt_parts.append(f"{cond_col}: {current_row_data[cond_col]}")
+                for other_col in all_train_columns:
+                    if (
+                        other_col not in self.text_generating_columns
+                        and other_col not in self.conditional_columns
+                        and other_col in current_row_data
+                    ):
+                        val_str = str(current_row_data[other_col])
+                        if len(val_str) > 30:
+                            val_str = val_str[:27] + "..."
+                        prompt_parts.append(f"{other_col}: {val_str}")
+
+                prompt = ", ".join(prompt_parts) + f", Generate {text_col}: "
+
+                generated_text_candidate = None
+                max_retries = 10
+                for _retry_attempt in range(max_retries):
+                    generated_text_candidate = self._generate_via_prompt(
+                        prompt,
+                        great_model_instance,
+                        device=device,
+                    )
+                    if generated_text_candidate not in original_unique_text_values[text_col]:
+                        break
+                else:
+                    logging.warning(
+                        f"Max retries reached for generating novel text for {text_col}. Using last candidate."
+                    )
+                current_row_data[text_col] = generated_text_candidate
+
+            ordered_row = {col: current_row_data.get(col) for col in train_df.columns}
+            if target is not None and self.TEMP_TARGET in current_row_data:
+                ordered_row[self.TEMP_TARGET] = current_row_data[self.TEMP_TARGET]
+
+            generated_rows.append(ordered_row)
+
+        generated_df = pd.DataFrame(generated_rows)
+        return generated_df.reindex(columns=current_train_df.columns)
+
+    def _standard_llm_sampling(
+        self,
+        great_model_instance,
+        current_train_df: pd.DataFrame,
+        device: str,
+    ) -> pd.DataFrame:
+        """
+        Fallback sampling when no explicit text/conditional columns are provided.
+        """
+        logging.info("Starting standard LLM sampling.")
+        return great_model_instance.sample(
+            int(self.gen_x_times * current_train_df.shape[0]),
+            device=device,
+            max_length=self.gen_params["max_length"],
+        )
+
     def generate_data(
             self, train_df, target, test_df, only_generated_data: bool
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         self._validate_data(train_df, target, test_df)
         self.check_params()
-        if target is not None:
-            train_df[self.TEMP_TARGET] = target
-        logging.info("Fitting LLM model")
-        is_fp16 = torch.cuda.is_available()
-        model = GReaT(llm=self.gen_params["llm"], batch_size=self.gen_params["batch_size"],
-                      epochs=self.gen_params["epochs"], fp16=is_fp16)
-        model.fit(train_df)
 
-        logging.info("Finished training ForestDiffusionModel")
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        current_train_df = self._build_training_frame(train_df, target)
+        great_model_instance, device = self._fit_great_model(current_train_df)
 
-        generated_df = model.sample(int(self.gen_x_times * train_df.shape[0]), device=device,
-                                    max_length=self.gen_params["max_length"])
-        return self.handle_generated_data(train_df, generated_df, only_generated_data)
+        if self.text_generating_columns and self.conditional_columns:
+            generated_df = self._conditional_text_generation(
+                great_model_instance,
+                current_train_df=current_train_df,
+                train_df=train_df,
+                target=target,
+                device=device,
+            )
+        else:
+            generated_df = self._standard_llm_sampling(
+                great_model_instance,
+                current_train_df=current_train_df,
+                device=device,
+            )
+
+        # When a target is provided, ``current_train_df`` already includes the
+        # TEMP_TARGET column and represents the true training frame used for
+        # generation. Passing it to ``handle_generated_data`` keeps feature and
+        # target alignment consistent for both conditional and standard LLM
+        # sampling paths.
+        base_train_for_handling = current_train_df if target is not None else train_df
+        return self.handle_generated_data(base_train_for_handling, generated_df, only_generated_data)
+
+    def _generate_via_prompt(self, prompt: str, great_model_instance, device: str, max_tokens_to_generate=50) -> str:
+        """
+        Generate a short text completion from the underlying GReaT LLM.
+
+        Args:
+            prompt (str): Serialized row description used as generation context.
+            great_model_instance: Fitted GReaT instance providing `model` and
+                `tokenizer` attributes.
+            device (str): Target device for inference (for example, ``"cpu"``
+                or ``"cuda"``).
+            max_tokens_to_generate (int): Maximum number of new tokens to
+                sample from the model.
+
+        Returns:
+            str: Post-processed generated text. Returns an empty string if
+            generation fails.
+        """
+        llm_model = great_model_instance.model
+        tokenizer = great_model_instance.tokenizer
+
+        if llm_model is None or tokenizer is None:
+            logging.error("LLM model or tokenizer not available in GReaT instance.")
+            return ""  # Or raise an error
+
+        llm_model.to(device)
+
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True,
+                           max_length=tokenizer.model_max_length - max_tokens_to_generate)
+        input_ids = inputs.input_ids.to(device)
+        attention_mask = inputs.attention_mask.to(device)
+
+        try:
+            outputs = llm_model.generate(
+                input_ids,
+                attention_mask=attention_mask,
+                max_new_tokens=max_tokens_to_generate,
+                pad_token_id=tokenizer.eos_token_id,
+                do_sample=True,  # Enable sampling for more diverse outputs
+                temperature=0.7,  # Default temperature, can be tuned
+                top_k=50,  # Default top_k, can be tuned
+                top_p=0.95  # Default top_p, can be tuned
+            )
+            generated_text = tokenizer.decode(outputs[0, input_ids.shape[1]:], skip_special_tokens=True)
+
+            generated_text = generated_text.split('\n')[0].split('|')[0].strip()
+
+            return generated_text
+
+        except Exception as e:
+            logging.error(f"Error during text generation via prompt: {e}")
+            return ""  # Fallback or re-raise
 
 
 if __name__ == "__main__":
@@ -411,7 +637,7 @@ if __name__ == "__main__":
         GANGenerator(cat_cols=["A"], gen_x_times=20, only_generated_data=True),
         ForestDiffusionGenerator(cat_cols=["A"], gen_x_times=10, only_generated_data=True),
         ForestDiffusionGenerator(gen_x_times=15, only_generated_data=False,
-                                gen_params={"batch_size": 500, "patience": 25, "epochs": 500})
+                                 gen_params={"batch_size": 500, "patience": 25, "epochs": 500})
     ]
 
     for gen in generators:
