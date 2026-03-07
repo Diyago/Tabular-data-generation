@@ -393,16 +393,19 @@ class SamplerLLM(SamplerOriginal):
                     self.gen_params["epochs"]))
             self.gen_params["epochs"] = 3
 
-    def generate_data(
-            self, train_df, target, test_df, only_generated_data: bool
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        self._validate_data(train_df, target, test_df)
-        self.check_params()
-
+    def _build_training_frame(self, train_df: pd.DataFrame, target: pd.DataFrame | None) -> pd.DataFrame:
+        """
+        Return a copy of the training frame with TEMP_TARGET attached when a target is provided.
+        """
         current_train_df = train_df.copy()
         if target is not None:
             current_train_df[self.TEMP_TARGET] = target
+        return current_train_df
 
+    def _fit_great_model(self, current_train_df: pd.DataFrame):
+        """
+        Fit a GReaT model on the provided training frame and return the instance and inference device.
+        """
         logging.info("Fitting LLM model")
         is_fp16 = torch.cuda.is_available()
         try:
@@ -410,96 +413,151 @@ class SamplerLLM(SamplerOriginal):
         except ImportError:
             raise ImportError("be_great library is not installed. Please install it to use LLMGenerator.")
 
-        great_model_instance = GReaT(llm=self.gen_params["llm"], batch_size=self.gen_params["batch_size"],
-                                     epochs=self.gen_params["epochs"], fp16=is_fp16)
+        great_model_instance = GReaT(
+            llm=self.gen_params["llm"],
+            batch_size=self.gen_params["batch_size"],
+            epochs=self.gen_params["epochs"],
+            fp16=is_fp16,
+        )
         great_model_instance.fit(current_train_df)
         logging.info("Finished training LLM model")
 
-        device = "cuda" if torch.cuda.is_available() else "cpu"  # Needed for _generate_via_prompt
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        return great_model_instance, device
+
+    def _conditional_text_generation(
+        self,
+        great_model_instance,
+        current_train_df: pd.DataFrame,
+        train_df: pd.DataFrame,
+        target: pd.DataFrame | None,
+        device: str,
+    ) -> pd.DataFrame:
+        """
+        Generate rows when text and conditional columns are specified.
+        """
+        logging.info("Starting conditional generation of text columns.")
+        num_samples_to_generate = int(self.gen_x_times * train_df.shape[0])
+
+        original_unique_text_values: dict[str, set] = {}
+        for col in self.text_generating_columns:
+            if col not in current_train_df.columns:
+                raise ValueError(f"Text generating column '{col}' not found in training data.")
+            original_unique_text_values[col] = set(current_train_df[col].unique())
+
+        attribute_distributions: dict[str, pd.Series] = {}
+        for col in self.conditional_columns:
+            if col not in current_train_df.columns:
+                raise ValueError(f"Conditional column '{col}' not found in training data.")
+            attribute_distributions[col] = current_train_df[col].value_counts(normalize=True)
+
+        generated_rows: list[dict] = []
+        all_train_columns = current_train_df.columns.tolist()
+
+        for _ in range(num_samples_to_generate):
+            current_row_data: dict = {}
+
+            for attr_col in self.conditional_columns:
+                dist = attribute_distributions[attr_col]
+                current_row_data[attr_col] = np.random.choice(dist.index, p=dist.values)
+
+            row_template_for_impute = pd.DataFrame(columns=all_train_columns, index=[0])
+            for col in all_train_columns:
+                if col in current_row_data:
+                    row_template_for_impute.loc[0, col] = current_row_data[col]
+                elif col not in self.text_generating_columns:
+                    row_template_for_impute.loc[0, col] = np.nan
+
+            imputed_full_row_df = great_model_instance.impute(
+                row_template_for_impute.copy(),
+                max_length=self.gen_params.get("max_length", 500),
+            )
+
+            for col in all_train_columns:
+                if col not in self.text_generating_columns and col not in current_row_data:
+                    current_row_data[col] = imputed_full_row_df.loc[0, col]
+
+            for text_col in self.text_generating_columns:
+                prompt_parts: list[str] = []
+                for cond_col in self.conditional_columns:
+                    prompt_parts.append(f"{cond_col}: {current_row_data[cond_col]}")
+                for other_col in all_train_columns:
+                    if (
+                        other_col not in self.text_generating_columns
+                        and other_col not in self.conditional_columns
+                        and other_col in current_row_data
+                    ):
+                        val_str = str(current_row_data[other_col])
+                        if len(val_str) > 30:
+                            val_str = val_str[:27] + "..."
+                        prompt_parts.append(f"{other_col}: {val_str}")
+
+                prompt = ", ".join(prompt_parts) + f", Generate {text_col}: "
+
+                generated_text_candidate = None
+                max_retries = 10
+                for _retry_attempt in range(max_retries):
+                    generated_text_candidate = self._generate_via_prompt(
+                        prompt,
+                        great_model_instance,
+                        device=device,
+                    )
+                    if generated_text_candidate not in original_unique_text_values[text_col]:
+                        break
+                else:
+                    logging.warning(
+                        f"Max retries reached for generating novel text for {text_col}. Using last candidate."
+                    )
+                current_row_data[text_col] = generated_text_candidate
+
+            ordered_row = {col: current_row_data.get(col) for col in train_df.columns}
+            if target is not None and self.TEMP_TARGET in current_row_data:
+                ordered_row[self.TEMP_TARGET] = current_row_data[self.TEMP_TARGET]
+
+            generated_rows.append(ordered_row)
+
+        generated_df = pd.DataFrame(generated_rows)
+        return generated_df.reindex(columns=current_train_df.columns)
+
+    def _standard_llm_sampling(
+        self,
+        great_model_instance,
+        current_train_df: pd.DataFrame,
+        device: str,
+    ) -> pd.DataFrame:
+        """
+        Fallback sampling when no explicit text/conditional columns are provided.
+        """
+        logging.info("Starting standard LLM sampling.")
+        return great_model_instance.sample(
+            int(self.gen_x_times * current_train_df.shape[0]),
+            device=device,
+            max_length=self.gen_params["max_length"],
+        )
+
+    def generate_data(
+            self, train_df, target, test_df, only_generated_data: bool
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        self._validate_data(train_df, target, test_df)
+        self.check_params()
+
+        current_train_df = self._build_training_frame(train_df, target)
+        great_model_instance, device = self._fit_great_model(current_train_df)
 
         if self.text_generating_columns and self.conditional_columns:
-            logging.info("Starting conditional generation of text columns.")
-            num_samples_to_generate = int(self.gen_x_times * train_df.shape[0])
-
-            original_unique_text_values = {}
-            for col in self.text_generating_columns:
-                if col not in current_train_df.columns:
-                    raise ValueError(f"Text generating column '{col}' not found in training data.")
-                original_unique_text_values[col] = set(current_train_df[col].unique())
-
-            attribute_distributions = {}
-            for col in self.conditional_columns:
-                if col not in current_train_df.columns:
-                    raise ValueError(f"Conditional column '{col}' not found in training data.")
-                attribute_distributions[col] = current_train_df[col].value_counts(normalize=True)
-
-            generated_rows = []
-            all_train_columns = current_train_df.columns.tolist()
-
-            for _ in range(num_samples_to_generate):
-                current_row_data = {}
-
-                # 1. Sample conditional attributes
-                for attr_col in self.conditional_columns:
-                    dist = attribute_distributions[attr_col]
-                    current_row_data[attr_col] = np.random.choice(dist.index, p=dist.values)
-
-                row_template_for_impute = pd.DataFrame(columns=all_train_columns, index=[0])
-                for col in all_train_columns:
-                    if col in current_row_data:
-                        row_template_for_impute.loc[0, col] = current_row_data[col]
-                    elif col not in self.text_generating_columns:
-                        row_template_for_impute.loc[0, col] = np.nan
-
-                imputed_full_row_df = great_model_instance.impute(row_template_for_impute.copy(),
-                                                                  max_length=self.gen_params.get("max_length", 500))
-
-                for col in all_train_columns:
-                    if col not in self.text_generating_columns and col not in current_row_data:
-                        current_row_data[col] = imputed_full_row_df.loc[0, col]
-
-                # 3. Generate novel text values
-                for text_col in self.text_generating_columns:
-                    prompt_parts = []
-                    for cond_col in self.conditional_columns:
-                        prompt_parts.append(f"{cond_col}: {current_row_data[cond_col]}")
-                    for other_col in all_train_columns:
-                        if (other_col not in self.text_generating_columns and other_col not in self.conditional_columns
-                                and other_col in current_row_data):
-                            val_str = str(current_row_data[other_col])
-                            if len(val_str) > 30: val_str = val_str[:27] + "..."
-                            prompt_parts.append(f"{other_col}: {val_str}")
-
-                    prompt = ", ".join(prompt_parts) + f", Generate {text_col}: "
-
-                    generated_text_candidate = None
-                    max_retries = 10
-                    for _retry_attempt in range(max_retries):
-                        generated_text_candidate = self._generate_via_prompt(prompt, great_model_instance,
-                                                                             device=device)
-                        if generated_text_candidate not in original_unique_text_values[text_col]:
-                            break
-                    else:  # Max retries reached
-                        logging.warning(
-                            f"Max retries reached for generating novel text for {text_col}. Using last candidate.")
-                    current_row_data[text_col] = generated_text_candidate
-
-                # Ensure all columns are present in the order of original train_df (excluding TEMP_TARGET for generated_df)
-                ordered_row = {col: current_row_data.get(col) for col in
-                               train_df.columns}  # Uses original train_df columns
-                if target is not None and self.TEMP_TARGET in current_row_data:  # Handle target if it was part of generation
-                    ordered_row[self.TEMP_TARGET] = current_row_data[self.TEMP_TARGET]
-
-                generated_rows.append(ordered_row)
-
-            generated_df = pd.DataFrame(generated_rows)
-            generated_df = generated_df.reindex(columns=current_train_df.columns)
-
+            generated_df = self._conditional_text_generation(
+                great_model_instance,
+                current_train_df=current_train_df,
+                train_df=train_df,
+                target=target,
+                device=device,
+            )
         else:
-            logging.info("Starting standard LLM sampling.")
-            generated_df = great_model_instance.sample(int(self.gen_x_times * current_train_df.shape[0]),
-                                                       device=device,
-                                                       max_length=self.gen_params["max_length"])
+            generated_df = self._standard_llm_sampling(
+                great_model_instance,
+                current_train_df=current_train_df,
+                device=device,
+            )
 
         return self.handle_generated_data(train_df, generated_df, only_generated_data)
 
