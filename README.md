@@ -311,14 +311,132 @@ new_train, _ = GANGenerator(
 new_train = collect_dates(new_train)
 ```
 
-## Data Quality Validation
+## Quality Report
 
-Evaluate synthetic data fidelity with the built-in comparison utility:
+Generate a self-contained HTML report comparing original and synthetic data across multiple quality axes: column statistics, PSI, correlation heatmaps, distribution plots, and ML utility (TSTR vs TRTR).
+
+```python
+from tabgan import QualityReport
+
+report = QualityReport(
+    original_df, synthetic_df,
+    cat_cols=["gender"],
+    target_col="target",      # enables ML utility evaluation
+).compute()
+
+# Export to a single HTML file (charts embedded as base64)
+report.to_html("quality_report.html")
+
+# Or access metrics programmatically
+summary = report.summary()
+print(f"Overall score: {summary['overall_score']}")
+print(f"Mean PSI: {summary['psi']['mean']}")
+print(f"ML utility ratio: {summary['ml_utility']['utility_ratio']}")
+```
+
+For a quick comparison without the full report:
 
 ```python
 from tabgan.utils import compare_dataframes
 
 score = compare_dataframes(original_df, generated_df)  # 0.0 (poor) to 1.0 (excellent)
+```
+
+## Constraints
+
+Enforce business rules on generated data. Constraints are applied as a post-generation step — invalid rows are repaired or filtered out.
+
+```python
+from tabgan import GANGenerator, RangeConstraint, UniqueConstraint, FormulaConstraint, RegexConstraint
+
+new_train, new_target = GANGenerator(gen_x_times=1.5).generate_data_pipe(
+    train, target, test,
+    constraints=[
+        RangeConstraint("age", min_val=0, max_val=120),
+        UniqueConstraint("email"),
+        FormulaConstraint("end_date > start_date"),
+        RegexConstraint("zip_code", r"\d{5}"),
+    ],
+)
+```
+
+**Available constraints:**
+
+| Constraint | Description | Fix strategy |
+|------------|-------------|--------------|
+| `RangeConstraint` | Numeric values within `[min, max]` | Clips values to bounds |
+| `UniqueConstraint` | No duplicate values in a column | Drops duplicate rows |
+| `FormulaConstraint` | Boolean expression via `df.eval()` | Filters violating rows |
+| `RegexConstraint` | String values match a regex pattern | Filters non-matching rows |
+
+The `ConstraintEngine` supports two strategies: `"fix"` (repair then filter) and `"filter"` (drop violations only):
+
+```python
+from tabgan import ConstraintEngine, RangeConstraint
+
+engine = ConstraintEngine(
+    constraints=[RangeConstraint("price", min_val=0)],
+    strategy="fix",  # or "filter"
+)
+cleaned_df = engine.apply(generated_df)
+```
+
+## Privacy Metrics
+
+Assess re-identification risk of synthetic data before sharing. Includes Distance to Closest Record (DCR), Nearest Neighbor Distance Ratio (NNDR), and membership inference risk.
+
+```python
+from tabgan import PrivacyMetrics
+
+pm = PrivacyMetrics(original_df, synthetic_df, cat_cols=["gender"])
+summary = pm.summary()
+
+print(f"Overall privacy score: {summary['overall_privacy_score']}")  # 0 (risky) to 1 (private)
+print(f"DCR mean: {summary['dcr']['mean']}")
+print(f"NNDR mean: {summary['nndr']['mean']}")
+print(f"Membership inference AUC: {summary['membership_inference']['auc']}")  # closer to 0.5 = better
+```
+
+**Metrics explained:**
+
+| Metric | What it measures | Good value |
+|--------|-----------------|------------|
+| **DCR** | Distance from each synthetic row to nearest real row | Higher = more private |
+| **NNDR** | Ratio of 1st/2nd nearest neighbor distances | Closer to 1.0 |
+| **MI AUC** | Can a classifier tell if a record was in training data? | Closer to 0.5 |
+
+## sklearn Pipeline Integration
+
+Use `TabGANTransformer` to insert synthetic data augmentation into an sklearn `Pipeline`:
+
+```python
+from sklearn.pipeline import Pipeline
+from sklearn.ensemble import RandomForestClassifier
+from tabgan import TabGANTransformer
+
+pipe = Pipeline([
+    ("augment", TabGANTransformer(gen_x_times=1.5, cat_cols=["gender"])),
+    ("model", RandomForestClassifier()),
+])
+
+# fit() generates synthetic data and trains the model on augmented data
+pipe.fit(X_train, y_train)
+```
+
+Works with any generator and supports constraints:
+
+```python
+from tabgan import TabGANTransformer, GANGenerator, RangeConstraint
+
+transformer = TabGANTransformer(
+    generator_class=GANGenerator,
+    gen_x_times=2.0,
+    gen_params={"batch_size": 500, "epochs": 10, "patience": 5},
+    constraints=[RangeConstraint("age", min_val=0, max_val=120)],
+)
+
+X_augmented = transformer.fit_transform(X_train, y_train)
+y_augmented = transformer.get_augmented_target()
 ```
 
 ## Command-Line Interface
