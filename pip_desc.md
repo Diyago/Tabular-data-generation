@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://pypi.org/project/tabgan/"><img src="https://img.shields.io/pypi/v/tabgan.svg" alt="PyPI Version"></a>
-  <a href="https://pypi.org/project/tabgan/"><img src="https://img.shields.io/pypi/pyversions/tabgan" alt="Python Version"></a>
+  <a href="https://pypi.org/project/tabgan/"><img src="https://img.shields.io/pypi/pyversions/tabgan?v=3.0.2" alt="Python Version"></a>
   <a href="https://pepy.tech/project/tabgan"><img src="https://pepy.tech/badge/tabgan" alt="Downloads"></a>
   <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
   <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code style: black"></a>
