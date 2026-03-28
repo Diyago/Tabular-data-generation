@@ -335,6 +335,8 @@ tabgan-generate \
 
 ## Pipeline Architecture
 
+![Experiment design and workflow](images/workflow.png)
+
 ```
 Input (train_df, target, test_df)
   |
