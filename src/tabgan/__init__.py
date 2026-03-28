@@ -1,8 +1,19 @@
 # -*- coding: utf-8 -*-
-from pkg_resources import DistributionNotFound, get_distribution
+from importlib.metadata import version, PackageNotFoundError
 from .sampler import OriginalGenerator, Sampler, GANGenerator, ForestDiffusionGenerator, LLMGenerator
 from .llm_config import LLMAPIConfig
 from .llm_api_client import LLMAPIClient
+from .constraints import (
+    Constraint,
+    RangeConstraint,
+    UniqueConstraint,
+    FormulaConstraint,
+    RegexConstraint,
+    ConstraintEngine,
+)
+from .privacy_metrics import PrivacyMetrics
+from .quality_report import QualityReport
+from .sklearn_transformer import TabGANTransformer
 
 __all__ = [
     "OriginalGenerator",
@@ -12,13 +23,18 @@ __all__ = [
     "LLMGenerator",
     "LLMAPIConfig",
     "LLMAPIClient",
+    "Constraint",
+    "RangeConstraint",
+    "UniqueConstraint",
+    "FormulaConstraint",
+    "RegexConstraint",
+    "ConstraintEngine",
+    "PrivacyMetrics",
+    "QualityReport",
+    "TabGANTransformer",
 ]
 
 try:
-    # Change here if project is renamed and does not equal the package name
-    dist_name = __name__
-    __version__ = get_distribution(dist_name).version
-except DistributionNotFound:
+    __version__ = version(__name__)
+except PackageNotFoundError:
     __version__ = "unknown"
-finally:
-    del get_distribution, DistributionNotFound

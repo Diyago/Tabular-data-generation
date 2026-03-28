@@ -27,40 +27,32 @@ __license__ = "Apache 2.0"
 __all__ = ["OriginalGenerator", "GANGenerator", "ForestDiffusionGenerator", "LLMGenerator"]
 
 
-class OriginalGenerator(SampleData):
+class _BaseGenerator(SampleData):
+    """Base factory that stores constructor arguments for the concrete sampler."""
+    _sampler_class = None
+
     def __init__(self, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
 
     def get_object_generator(self) -> Sampler:
-        return SamplerOriginal(*self.args, **self.kwargs)
+        return self._sampler_class(*self.args, **self.kwargs)
 
 
-class GANGenerator(SampleData):
-    def __init__(self, *args, **kwargs):
-        self.args = args
-        self.kwargs = kwargs
-
-    def get_object_generator(self) -> Sampler:
-        return SamplerGAN(*self.args, **self.kwargs)
+class OriginalGenerator(_BaseGenerator):
+    _sampler_class = None  # set after SamplerOriginal is defined
 
 
-class ForestDiffusionGenerator(SampleData):
-    def __init__(self, *args, **kwargs):
-        self.args = args
-        self.kwargs = kwargs
-
-    def get_object_generator(self) -> Sampler:
-        return SamplerDiffusion(*self.args, **self.kwargs)
+class GANGenerator(_BaseGenerator):
+    _sampler_class = None
 
 
-class LLMGenerator(SampleData):
-    def __init__(self, *args, **kwargs):
-        self.args = args
-        self.kwargs = kwargs
+class ForestDiffusionGenerator(_BaseGenerator):
+    _sampler_class = None
 
-    def get_object_generator(self) -> Sampler:
-        return SamplerLLM(*self.args, **self.kwargs)
+
+class LLMGenerator(_BaseGenerator):
+    _sampler_class = None
 
 
 class SamplerOriginal(Sampler):
@@ -71,17 +63,10 @@ class SamplerOriginal(Sampler):
             bot_filter_quantile: float = 0.001,
             top_filter_quantile: float = 0.999,
             is_post_process: bool = True,
-            adversarial_model_params: dict = {
-                "metrics": "AUC",
-                "max_depth": 2,
-                "max_bin": 100,
-                "n_estimators": 150,
-                "learning_rate": 0.02,
-                "random_state": 42,
-            },
+            adversarial_model_params: dict = None,
             pregeneration_frac: float = 2,
             only_generated_data: bool = False,
-            gen_params: dict = {"batch_size": 45, 'patience': 25, "epochs": 50, "llm": "distilgpt2"},
+            gen_params: dict = None,
             text_generating_columns: list = None,
             conditional_columns: list = None,
             llm_api_config: LLMAPIConfig = None,
@@ -121,6 +106,17 @@ class SamplerOriginal(Sampler):
                 the API instead of the local model. Useful for LM Studio, Ollama,
                 OpenAI, etc.
         """
+        if adversarial_model_params is None:
+            adversarial_model_params = {
+                "metrics": "AUC",
+                "max_depth": 2,
+                "max_bin": 100,
+                "n_estimators": 150,
+                "learning_rate": 0.02,
+                "random_state": 42,
+            }
+        if gen_params is None:
+            gen_params = {"batch_size": 45, "patience": 25, "epochs": 50, "llm": "distilgpt2"}
         super().__init__(
             gen_x_times=gen_x_times,
             cat_cols=cat_cols,
@@ -140,10 +136,10 @@ class SamplerOriginal(Sampler):
 
     @staticmethod
     def preprocess_data_df(df) -> pd.DataFrame:
-        logging.info("Input shape: {}".format(df.shape))
-        if isinstance(df, pd.DataFrame) is False:
+        logging.info(f"Input shape: {df.shape}")
+        if not isinstance(df, pd.DataFrame):
             raise ValueError(
-                "Input dataframe aren't pandas dataframes: df is {}".format(type(df))
+                f"Input dataframe is not a pandas DataFrame: got {type(df)}"
             )
         return df
 
@@ -156,9 +152,7 @@ class SamplerOriginal(Sampler):
         self.TEMP_TARGET = target.columns[0]
         if self.TEMP_TARGET in train.columns:
             raise ValueError(
-                "Input train dataframe already have {} column, consider removing it".format(
-                    self.TEMP_TARGET
-                )
+                f"Input train dataframe already has '{self.TEMP_TARGET}' column, consider removing it"
             )
         if "test_similarity" in train.columns:
             raise ValueError(
@@ -171,7 +165,7 @@ class SamplerOriginal(Sampler):
             self, train_df, target, test_df, only_generated_data
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         if only_generated_data:
-            Warning(
+            warnings.warn(
                 "For SamplerOriginal setting only_generated_data doesn't change anything, "
                 "because generated data sampled from the train!"
             )
@@ -183,10 +177,8 @@ class SamplerOriginal(Sampler):
         generated_df = generated_df.reset_index(drop=True)
 
         logging.info(
-            "Generated shape: {} and {}".format(
-                generated_df.drop(self.TEMP_TARGET, axis=1).shape,
-                generated_df[self.TEMP_TARGET].shape,
-            )
+            f"Generated shape: {generated_df.drop(self.TEMP_TARGET, axis=1).shape} "
+            f"and {generated_df[self.TEMP_TARGET].shape}"
         )
         return (
             generated_df.drop(self.TEMP_TARGET, axis=1),
@@ -258,17 +250,14 @@ class SamplerOriginal(Sampler):
         if test_df is not None:
             if train_df.shape[0] < 10 or test_df.shape[0] < 10:
                 raise ValueError(
-                    "Shape of train is {} and test is {}. Both should at least 10! "
-                    "Consider disabling adversarial filtering".format(
-                        train_df.shape[0], test_df.shape[0]
-                    )
+                    f"Shape of train is {train_df.shape[0]} and test is {test_df.shape[0]}. "
+                    f"Both should be at least 10! Consider disabling adversarial filtering"
                 )
         if target is not None:
             if train_df.shape[0] != target.shape[0]:
                 raise ValueError(
-                    "Something gone wrong: shape of train_df = {} is not equal to target = {} shape".format(
-                        train_df.shape[0], target.shape[0]
-                    )
+                    f"Shape mismatch: train_df has {train_df.shape[0]} rows "
+                    f"but target has {target.shape[0]} rows"
                 )
 
     def handle_generated_data(self, train_df, generated_df, only_generated_data):
@@ -302,9 +291,7 @@ class SamplerOriginal(Sampler):
         if not only_generated_data:
             train_df = pd.concat([train_df, generated_df]).reset_index(drop=True)
             logging.info(
-                "Generated shapes: {} plus target".format(
-                    _drop_col_if_exist(train_df, self.TEMP_TARGET).shape
-                )
+                f"Generated shapes: {_drop_col_if_exist(train_df, self.TEMP_TARGET).shape} plus target"
             )
             return (
                 _drop_col_if_exist(train_df, self.TEMP_TARGET),
@@ -312,9 +299,7 @@ class SamplerOriginal(Sampler):
             )
         else:
             logging.info(
-                "Generated shapes: {} plus target".format(
-                    _drop_col_if_exist(generated_df, self.TEMP_TARGET).shape
-                )
+                f"Generated shapes: {_drop_col_if_exist(generated_df, self.TEMP_TARGET).shape} plus target"
             )
             return (
                 _drop_col_if_exist(generated_df, self.TEMP_TARGET),
@@ -326,16 +311,15 @@ class SamplerGAN(SamplerOriginal):
     def check_params(self):
         if self.gen_params["batch_size"] % 10 != 0:
             logging.warning(
-                "Batch size should be divisible to 10, but provided {}. Fixing it".format(
-                    self.gen_params["batch_size"]))
+                f"Batch size should be divisible by 10, but got {self.gen_params['batch_size']}. Fixing it")
             self.gen_params["batch_size"] += 10 - (self.gen_params["batch_size"] % 10)
 
         if "patience" not in self.gen_params:
-            logging.warning("patience param is not set for GAN params, so setting it to default ""25""")
+            logging.warning("patience param is not set for GAN params, setting default to 25")
             self.gen_params["patience"] = 25
 
         if "epochs" not in self.gen_params:
-            logging.warning("patience param is not set for GAN params, so setting it to default ""50""")
+            logging.warning("epochs param is not set for GAN params, setting default to 50")
             self.gen_params["epochs"] = 50
 
     def generate_data(
@@ -389,16 +373,15 @@ class SamplerDiffusion(SamplerOriginal):
 class SamplerLLM(SamplerOriginal):
     def check_params(self):
         if "llm" not in self.gen_params:
-            logging.warning("llm param is not set for LLM params, so setting it to default ""distilgpt2""")
+            logging.warning("llm param is not set for LLM params, setting default to 'distilgpt2'")
             self.gen_params["llm"] = "distilgpt2"
         if "max_length" not in self.gen_params:
-            logging.warning("max_length param is not set for LLM params, so setting it to default ""500""")
-            self.gen_params["max_length"] = "500"
+            logging.warning("max_length param is not set for LLM params, setting default to 500")
+            self.gen_params["max_length"] = 500
 
         if self.gen_params["epochs"] < 3:
             logging.warning(
-                "Current set epoch = {} for llm training is too low, setting to 3!""".format(
-                    self.gen_params["epochs"]))
+                f"Current epoch={self.gen_params['epochs']} for LLM training is too low, setting to 3")
             self.gen_params["epochs"] = 3
 
     def _build_training_frame(self, train_df: pd.DataFrame, target: pd.DataFrame | None) -> pd.DataFrame:
@@ -626,6 +609,13 @@ class SamplerLLM(SamplerOriginal):
         except Exception as e:
             logging.error(f"Error during text generation via prompt: {e}")
             return ""  # Fallback or re-raise
+
+
+# Wire up factory classes to their concrete sampler implementations
+OriginalGenerator._sampler_class = SamplerOriginal
+GANGenerator._sampler_class = SamplerGAN
+ForestDiffusionGenerator._sampler_class = SamplerDiffusion
+LLMGenerator._sampler_class = SamplerLLM
 
 
 if __name__ == "__main__":

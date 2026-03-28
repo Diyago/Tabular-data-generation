@@ -24,11 +24,10 @@ def setup_logging(loglevel):
     )
 
 
-def make_two_digit(num_as_str: str) -> pd.DataFrame:
-    if len(num_as_str) == 2:
-        return num_as_str
-    else:
+def make_two_digit(num_as_str: str) -> str:
+    if len(num_as_str) < 2:
         return "0" + num_as_str
+    return num_as_str
 
 
 def get_year_mnth_dt_from_date(df: pd.DataFrame, date_col="Date") -> pd.DataFrame:
@@ -66,7 +65,7 @@ def seed_everything(seed=1234):
     torch.backends.cudnn.deterministic = True
 
 
-def _sampler(creator, in_train, in_target, in_test) -> None:
+def _sampler(creator, in_train, in_target, in_test) -> tuple:
     _logger = logging.getLogger(__name__)
     _logger.info("Starting generating data")
     train, test = creator.generate_data_pipe(in_train, in_target, in_test)
@@ -230,7 +229,7 @@ def compare_dataframes(df_original, df_generated):
 
     # Combine uniqueness, data quality, and PSI scores (weighted)
     similarity_score = 0.1 * uniqueness_score + 0.45 * data_quality_score + 0.45 * (1/psi_similarity)
-    print(uniqueness_score, data_quality_score, psi_similarity)
+    logging.debug(f"Similarity components: uniqueness={uniqueness_score}, quality={data_quality_score}, psi={psi_similarity}")
     # Ensure score is between 0 and 1
     similarity_score = min(max(similarity_score, 0), 1)
 

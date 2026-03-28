@@ -1,36 +1,45 @@
-[![CodeFactor](https://www.codefactor.io/repository/github/diyago/tabular-data-generation/badge)](https://www.codefactor.io/repository/github/diyago/tabular-data-generation)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Python Version](https://img.shields.io/pypi/pyversions/tabgan)](https://pypi.org/project/tabgan/)
-[![PyPI Version](https://img.shields.io/pypi/v/tabgan.svg)](https://pypi.org/project/tabgan/)
-[![Downloads](https://pepy.tech/badge/tabgan)](https://pepy.tech/project/tabgan)
-[![CodeQL](https://github.com/diyago/Tabular-data-generation/workflows/CodeQL/badge.svg)](https://github.com/diyago/Tabular-data-generation/actions/workflows/codeql.yml)
+<p align="center">
+  <img src="images/tabular_gan.png" height="120" alt="TabGAN logo">
+</p>
 
-# TabGAN - Synthetic Tabular Data Generation
+<h1 align="center">TabGAN</h1>
+<p align="center"><strong>High-quality synthetic tabular data generation</strong></p>
 
-A powerful library for generating high-quality synthetic tabular data using state-of-the-art generative models including GANs, Diffusion models, and Large Language Models.
+<p align="center">
+  <a href="https://pypi.org/project/tabgan/"><img src="https://img.shields.io/pypi/v/tabgan.svg" alt="PyPI Version"></a>
+  <a href="https://pypi.org/project/tabgan/"><img src="https://img.shields.io/pypi/pyversions/tabgan" alt="Python Version"></a>
+  <a href="https://pepy.tech/project/tabgan"><img src="https://pepy.tech/badge/tabgan" alt="Downloads"></a>
+  <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
+  <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code style: black"></a>
+  <a href="https://www.codefactor.io/repository/github/diyago/tabular-data-generation"><img src="https://www.codefactor.io/repository/github/diyago/tabular-data-generation/badge" alt="CodeFactor"></a>
+  <a href="https://github.com/diyago/Tabular-data-generation/actions/workflows/codeql.yml"><img src="https://github.com/diyago/Tabular-data-generation/workflows/CodeQL/badge.svg" alt="CodeQL"></a>
+</p>
 
-<img src="images/tabular_gan.png" height="15%" width="15%">
+---
 
 ## Overview
 
-TabGAN is a comprehensive Python library that provides a unified interface for generating high-quality synthetic tabular data. It integrates multiple state-of-the-art generative approaches to address diverse data synthesis requirements:
+TabGAN provides a unified Python interface for generating synthetic tabular data using multiple state-of-the-art generative approaches:
 
-- **GANs**: Conditional Tabular GAN (CTGAN) for modeling complex multivariate distributions with mixed data types
-- **Diffusion Models**: Forest Diffusion for high-fidelity synthetic data generation with tree-based gradient boosting
-- **LLMs**: GReaT (Generative Realistic Tabular data) framework leveraging language models for realistic tabular data synthesis
-- **Time-Series**: TimeGAN support for temporal data generation preserving sequential dependencies
+| Approach | Backend | Strengths |
+|----------|---------|-----------|
+| **GANs** | Conditional Tabular GAN (CTGAN) | Mixed data types, complex multivariate distributions |
+| **Diffusion Models** | ForestDiffusion (tree-based gradient boosting) | High-fidelity generation for structured data |
+| **Large Language Models** | GReaT framework | Capturing semantic dependencies, conditional text generation |
+| **Baseline** | Random sampling with replacement | Quick benchmarking and comparison |
 
-*Related Research: [Tabular GANs for uneven distribution (arXiv:2010.00638)](https://arxiv.org/abs/2010.00638)*
+All generators share a common pipeline: **generate &rarr; post-process &rarr; adversarial filter**, ensuring synthetic data stays close to the real data distribution.
+
+*Based on the paper: [Tabular GANs for uneven distribution](https://arxiv.org/abs/2010.00638) (arXiv:2010.00638)*
 
 ## Key Features
 
-- **Multiple Generative Architectures**: Seamlessly switch between GANs, Diffusion Models, and LLMs via a unified API
-- **Adversarial Filtering**: Built-in adversarial validation to ensure synthetic data preserves predictive utility
-- **Mixed Data Type Support**: Native handling of continuous, categorical, and text columns
-- **Conditional Generation**: Generate data conditioned on specific column values or distributions
-- **Scalable Processing**: Efficient batch processing for large-scale datasets
-- **Quality Validation**: Integrated metrics for comparing synthetic against original data distributions
+- **Unified API** &mdash; switch between GANs, diffusion models, and LLMs with a single parameter change
+- **Adversarial filtering** &mdash; built-in LightGBM-based validation keeps synthetic samples distribution-consistent
+- **Mixed data types** &mdash; native handling of continuous, categorical, and free-text columns
+- **Conditional generation** &mdash; generate text conditioned on categorical attributes via LLM prompting
+- **LLM API support** &mdash; integrate with LM Studio, OpenAI, Ollama, or any OpenAI-compatible endpoint
+- **Quality validation** &mdash; compare original and synthetic distributions with a single function call
 
 ## Installation
 
@@ -45,12 +54,10 @@ import pandas as pd
 import numpy as np
 from tabgan.sampler import GANGenerator
 
-# Create sample data
 train = pd.DataFrame(np.random.randint(-10, 150, size=(150, 4)), columns=list("ABCD"))
 target = pd.DataFrame(np.random.randint(0, 2, size=(150, 1)), columns=list("Y"))
 test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list("ABCD"))
 
-# Generate synthetic data
 new_train, new_target = GANGenerator().generate_data_pipe(train, target, test)
 ```
 
@@ -59,28 +66,28 @@ new_train, new_target = GANGenerator().generate_data_pipe(train, target, test)
 | Generator | Description | Best For |
 |-----------|-------------|----------|
 | `GANGenerator` | CTGAN-based generation | General tabular data with mixed types |
-| `ForestDiffusionGenerator` | Diffusion models + tree-based methods | Complex tabular structures |
-| `LLMGenerator` | Large Language Model based | Capturing complex dependencies |
-| `OriginalGenerator` | Baseline sampler | Baseline comparisons |
+| `ForestDiffusionGenerator` | Diffusion models with tree-based methods | Complex tabular structures |
+| `LLMGenerator` | Large Language Model based | Semantic dependencies, text columns |
+| `OriginalGenerator` | Baseline random sampler | Benchmarking and comparison |
 
 ## API Reference
 
-### Sampler Parameters
+### Common Parameters
 
-All generators accept these common parameters:
+All generators accept the following parameters:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `gen_x_times` | float | 1.1 | Multiplier for data generation amount |
-| `cat_cols` | list | None | Column names to treat as categorical |
-| `bot_filter_quantile` | float | 0.001 | Bottom quantile for post-process filtering |
-| `top_filter_quantile` | float | 0.999 | Top quantile for post-process filtering |
-| `is_post_process` | bool | True | Enable post-filtering |
-| `pregeneration_frac` | float | 2 | Pre-generation data multiplier |
-| `only_generated_data` | bool | False | Return only generated data (no original) |
-| `gen_params` | dict | See below | Generator-specific parameters |
+| `gen_x_times` | `float` | `1.1` | Multiplier for synthetic sample count relative to training size |
+| `cat_cols` | `list` | `None` | Column names to treat as categorical |
+| `bot_filter_quantile` | `float` | `0.001` | Lower quantile for post-processing filters |
+| `top_filter_quantile` | `float` | `0.999` | Upper quantile for post-processing filters |
+| `is_post_process` | `bool` | `True` | Enable quantile-based post-filtering |
+| `pregeneration_frac` | `float` | `2` | Oversampling factor before filtering |
+| `only_generated_data` | `bool` | `False` | Return only synthetic rows (exclude originals) |
+| `gen_params` | `dict` | See below | Generator-specific hyperparameters |
 
-### Generator-Specific Parameters
+### Generator-Specific Parameters (`gen_params`)
 
 **GANGenerator:**
 ```python
@@ -92,31 +99,33 @@ All generators accept these common parameters:
 {"batch_size": 32, "epochs": 4, "llm": "distilgpt2", "max_length": 500}
 ```
 
-### generate_data_pipe Method
+### `generate_data_pipe` Method
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `train_df` | pd.DataFrame | Training features |
-| `target` | pd.DataFrame | Target variable |
-| `test_df` | pd.DataFrame | Test features |
-| `deep_copy` | bool | Make copy of input dataframes |
-| `only_adversarial` | bool | Only perform adversarial filtering |
-| `use_adversarial` | bool | Enable adversarial filtering |
+```python
+new_train, new_target = generator.generate_data_pipe(
+    train_df,           # pd.DataFrame - training features
+    target,             # pd.DataFrame - target variable (or None)
+    test_df,            # pd.DataFrame - test features for distribution alignment
+    deep_copy=True,     # bool - copy input DataFrames
+    only_adversarial=False,  # bool - skip generation, only filter
+    use_adversarial=True,    # bool - enable adversarial filtering
+)
+```
 
-**Returns:** `Tuple[pd.DataFrame, pd.DataFrame]` - (new_train, new_target)
+**Returns:** `Tuple[pd.DataFrame, pd.DataFrame]` &mdash; `(new_train, new_target)`
 
 ## Data Format
 
-TabGAN accepts both `numpy.ndarray` and `pandas.DataFrame` inputs, supporting:
+TabGAN accepts `pandas.DataFrame` inputs with:
 
-- **Continuous Variables**: Numerical columns with any real-valued data
-- **Categorical Variables**: Discrete columns with a finite set of possible values
+- **Continuous columns** &mdash; any real-valued numerical data
+- **Categorical columns** &mdash; discrete columns with a finite set of values
 
-> **Note:** TabGAN internally processes all values as floating-point numbers. For integer-valued outputs, apply rounding after generation.
+> **Note:** TabGAN processes values as floating-point internally. Apply rounding after generation for integer-valued outputs.
 
 ## Examples
 
-### Basic Usage
+### Basic Usage with All Generators
 
 ```python
 from tabgan.sampler import OriginalGenerator, GANGenerator, ForestDiffusionGenerator, LLMGenerator
@@ -127,11 +136,14 @@ train = pd.DataFrame(np.random.randint(-10, 150, size=(150, 4)), columns=list("A
 target = pd.DataFrame(np.random.randint(0, 2, size=(150, 1)), columns=list("Y"))
 test = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list("ABCD"))
 
-# Different generators
 new_train1, new_target1 = OriginalGenerator().generate_data_pipe(train, target, test)
-new_train2, new_target2 = GANGenerator(gen_params={"batch_size": 500, "epochs": 10, "patience": 5}).generate_data_pipe(train, target, test)
+new_train2, new_target2 = GANGenerator(
+    gen_params={"batch_size": 500, "epochs": 10, "patience": 5}
+).generate_data_pipe(train, target, test)
 new_train3, new_target3 = ForestDiffusionGenerator().generate_data_pipe(train, target, test)
-new_train4, new_target4 = LLMGenerator(gen_params={"batch_size": 32, "epochs": 4, "llm": "distilgpt2", "max_length": 500}).generate_data_pipe(train, target, test)
+new_train4, new_target4 = LLMGenerator(
+    gen_params={"batch_size": 32, "epochs": 4, "llm": "distilgpt2", "max_length": 500}
+).generate_data_pipe(train, target, test)
 ```
 
 ### Full Parameter Example
@@ -149,168 +161,129 @@ new_train, new_target = GANGenerator(
     },
     pregeneration_frac=2,
     only_generated_data=False,
-    gen_params={"batch_size": 500, "patience": 25, "epochs": 500}
+    gen_params={"batch_size": 500, "patience": 25, "epochs": 500},
 ).generate_data_pipe(
     train, target, test,
     deep_copy=True,
     only_adversarial=False,
-    use_adversarial=True
+    use_adversarial=True,
 )
 ```
 
 ### LLM Conditional Text Generation
 
-Generate synthetic data with LLMs while controlling text generation based on specific conditions. This uses the internal `_generate_via_prompt` method for novel text generation.
+Generate synthetic rows with novel text values conditioned on categorical attributes:
 
 ```python
 import pandas as pd
 from tabgan.sampler import LLMGenerator
 
-# Create sample data with text and categorical columns
 train = pd.DataFrame({
     "Name": ["Anna", "Maria", "Ivan", "Sergey", "Olga", "Boris"],
     "Gender": ["F", "F", "M", "M", "F", "M"],
     "Age": [25, 30, 35, 40, 28, 32],
-    "Occupation": ["Engineer", "Doctor", "Artist", "Teacher", "Manager", "Pilot"]
+    "Occupation": ["Engineer", "Doctor", "Artist", "Teacher", "Manager", "Pilot"],
 })
 
-# Generate new names conditioned on Gender, with other features imputed
 new_train, _ = LLMGenerator(
-    gen_x_times=1.5,  # Generate 1.5x the original data
-    text_generating_columns=["Name"],  # Generate novel names
-    conditional_columns=["Gender"],    # Condition on Gender column
+    gen_x_times=1.5,
+    text_generating_columns=["Name"],      # columns to generate novel text for
+    conditional_columns=["Gender"],         # columns that condition text generation
     gen_params={"batch_size": 32, "epochs": 4, "llm": "distilgpt2", "max_length": 500},
-    is_post_process=False  # Disable post-processing for this example
-).generate_data_pipe(
-    train,
-    target=None,
-    test_df=None,
-    only_generated_data=True  # Return only generated data
-)
-
-print(new_train)
+    is_post_process=False,
+).generate_data_pipe(train, target=None, test_df=None, only_generated_data=True)
 ```
 
-**Parameters for conditional generation:**
-- `text_generating_columns`: List of column names to generate novel text for
-- `conditional_columns`: List of column names that condition the text generation
-
-The model will:
-1. Sample values for conditional columns from their distributions
-2. Impute remaining non-text columns using the LLM
-3. Generate novel text for text columns via prompt-based generation (using `_generate_via_prompt`)
-4. Ensure generated text values are unique (not present in original data)
+**How it works:**
+1. Sample conditional column values from their empirical distributions
+2. Impute remaining non-text columns using the fitted GReaT model
+3. Generate novel text via prompt-based generation
+4. Ensure generated text values differ from the original data
 
 ### LLM API-Based Text Generation
 
-Use external LLM APIs (LM Studio, OpenAI, Ollama) for text generation instead of local models. This allows you to leverage powerful models running on remote servers or local API endpoints.
+Use external LLM APIs (LM Studio, OpenAI, Ollama) instead of local models:
 
 ```python
 import pandas as pd
 from tabgan.sampler import LLMGenerator
 from tabgan.llm_config import LLMAPIConfig
 
-# Create sample data
 train = pd.DataFrame({
     "Name": ["Anna", "Maria", "Ivan", "Sergey", "Olga", "Boris"],
     "Gender": ["F", "F", "M", "M", "F", "M"],
     "Age": [25, 30, 35, 40, 28, 32],
-    "Occupation": ["Engineer", "Doctor", "Artist", "Teacher", "Manager", "Pilot"]
+    "Occupation": ["Engineer", "Doctor", "Artist", "Teacher", "Manager", "Pilot"],
 })
 
-# Configure API connection (LM Studio example)
+# LM Studio
 api_config = LLMAPIConfig.from_lm_studio(
     base_url="http://localhost:1234",
     model="google/gemma-3-12b",
-    timeout=90
+    timeout=90,
 )
 
-# Or use OpenAI
-# api_config = LLMAPIConfig.from_openai(
-#     api_key="your-api-key",
-#     model="gpt-4"
-# )
+# Or OpenAI:  LLMAPIConfig.from_openai(api_key="...", model="gpt-4")
+# Or Ollama:  LLMAPIConfig.from_ollama(model="llama3")
 
-# Or use Ollama
-# api_config = LLMAPIConfig.from_ollama(
-#     base_url="http://localhost:11434",
-#     model="llama3"
-# )
-
-# Generate with API-based text generation
 new_train, _ = LLMGenerator(
     gen_x_times=1.5,
     text_generating_columns=["Name"],
     conditional_columns=["Gender"],
     gen_params={"batch_size": 32, "epochs": 4, "llm": "distilgpt2", "max_length": 500},
-    llm_api_config=api_config,  # Use external API for text generation
-    is_post_process=False
-).generate_data_pipe(
-    train,
-    target=None,
-    test_df=None,
-    only_generated_data=True
-)
-
-print(new_train)
+    llm_api_config=api_config,
+    is_post_process=False,
+).generate_data_pipe(train, target=None, test_df=None, only_generated_data=True)
 ```
 
-**Configuration Options:**
+<details>
+<summary><strong>LLM API Configuration Options</strong></summary>
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `base_url` | str | `"http://localhost:1234"` | Base URL for the API server |
-| `model` | str | `"google/gemma-3-12b"` | Model identifier to use |
-| `api_key` | str | None | API key for authentication (OpenAI, etc.) |
-| `timeout` | int | 90 | Request timeout in seconds |
-| `max_tokens` | int | 256 | Maximum tokens to generate |
-| `temperature` | float | 0.7 | Sampling temperature (0.0-2.0) |
-| `system_prompt` | str | None | System prompt to guide generation |
+| `base_url` | `str` | `"http://localhost:1234"` | API server base URL |
+| `model` | `str` | `"google/gemma-3-12b"` | Model identifier |
+| `api_key` | `str` | `None` | API key for authentication |
+| `timeout` | `int` | `90` | Request timeout in seconds |
+| `max_tokens` | `int` | `256` | Maximum tokens to generate |
+| `temperature` | `float` | `0.7` | Sampling temperature |
+| `system_prompt` | `str` | `None` | System prompt for generation |
 
-**Supported API Providers:**
-- **LM Studio**: Local LLM server with OpenAI-compatible API
-- **OpenAI**: GPT-4, GPT-3.5, and other OpenAI models
-- **Ollama**: Local LLM server for running open-source models
-- **Any OpenAI-compatible API**: Custom endpoints with compatible schema
-
-**Testing API Connection:**
+**Testing the connection:**
 
 ```python
 from tabgan.llm_config import LLMAPIConfig
 from tabgan.llm_api_client import LLMAPIClient
 
-# Test if API is accessible
 config = LLMAPIConfig.from_lm_studio()
 with LLMAPIClient(config) as client:
-    is_connected = client.check_connection()
-    print(f"API available: {is_connected}")
-    
-    # Generate text directly
-    text = client.generate("Generate a female name: ")
-    print(f"Generated: {text}")
+    print(f"API available: {client.check_connection()}")
+    print(f"Generated: {client.generate('Generate a female name: ')}")
 ```
+
+</details>
 
 ### Improving Model Performance
 
 ```python
 import sklearn
+import pandas as pd
 from tabgan.sampler import GANGenerator
 
 def evaluate(clf, X_train, y_train, X_test, y_test):
     clf.fit(X_train, y_train)
     return sklearn.metrics.roc_auc_score(y_test, clf.predict_proba(X_test)[:, 1])
 
-# Load dataset
 dataset = sklearn.datasets.load_breast_cancer()
 clf = sklearn.ensemble.RandomForestClassifier(n_estimators=25, max_depth=6)
 X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(
-    pd.DataFrame(dataset.data), pd.DataFrame(dataset.target, columns=["target"]),
-    test_size=0.33, random_state=42)
+    pd.DataFrame(dataset.data),
+    pd.DataFrame(dataset.target, columns=["target"]),
+    test_size=0.33, random_state=42,
+)
 
-# Compare performance
 print("Baseline:", evaluate(clf, X_train, y_train, X_test, y_test))
 
-# Generate and evaluate
 new_train, new_target = GANGenerator().generate_data_pipe(X_train, y_train, X_test)
 print("With GAN:", evaluate(clf, new_train, new_target, X_test, y_test))
 ```
@@ -324,42 +297,71 @@ from tabgan.utils import get_year_mnth_dt_from_date, collect_dates
 from tabgan.sampler import GANGenerator
 
 train = pd.DataFrame(np.random.randint(-10, 150, size=(100, 4)), columns=list("ABCD"))
-min_date, max_date = pd.to_datetime('2019-01-01'), pd.to_datetime('2021-12-31')
+min_date, max_date = pd.to_datetime("2019-01-01"), pd.to_datetime("2021-12-31")
 d = (max_date - min_date).days + 1
-train['Date'] = min_date + pd.to_timedelta(np.random.randint(d, size=100), unit='d')
-train = get_year_mnth_dt_from_date(train, 'Date')
+train["Date"] = min_date + pd.to_timedelta(np.random.randint(d, size=100), unit="d")
+train = get_year_mnth_dt_from_date(train, "Date")
 
 new_train, _ = GANGenerator(
-    gen_x_times=1.1, cat_cols=['year'], bot_filter_quantile=0.001,
-    top_filter_quantile=0.999, is_post_process=True, pregeneration_frac=2,
-    only_generated_data=False
-).generate_data_pipe(
-    train.drop('Date', axis=1), None, train.drop('Date', axis=1)
-)
+    gen_x_times=1.1, cat_cols=["year"],
+    bot_filter_quantile=0.001, top_filter_quantile=0.999,
+    is_post_process=True, pregeneration_frac=2,
+).generate_data_pipe(train.drop("Date", axis=1), None, train.drop("Date", axis=1))
+
 new_train = collect_dates(new_train)
 ```
 
 ## Data Quality Validation
 
-Validate the statistical fidelity of generated data using the built-in evaluation utilities:
+Evaluate synthetic data fidelity with the built-in comparison utility:
 
 ```python
 from tabgan.utils import compare_dataframes
 
-# Returns a quality score between 0 (low fidelity) and 1 (high fidelity)
-quality_score = compare_dataframes(original_df, generated_df)
+score = compare_dataframes(original_df, generated_df)  # 0.0 (poor) to 1.0 (excellent)
 ```
 
-### Experimental Workflow
+## Command-Line Interface
+
+```bash
+tabgan-generate \
+    --input-csv train.csv \
+    --target-col target \
+    --generator gan \
+    --gen-x-times 1.5 \
+    --cat-cols year,gender \
+    --output-csv synthetic_train.csv
+```
+
+## Pipeline Architecture
 
 ![Experiment design and workflow](images/workflow.png)
 
+```
+Input (train_df, target, test_df)
+  |
+  v
+[Preprocess] --> Validate DataFrames, prepare columns
+  |
+  v
+[Generate]  --> CTGAN / ForestDiffusion / GReaT LLM / Random sampling
+  |
+  v
+[Post-process] --> Quantile-based filtering against test distribution
+  |
+  v
+[Adversarial Filter] --> LightGBM classifier removes dissimilar samples
+  |
+  v
+Output (synthetic_df, synthetic_target)
+```
+
 ## Benchmark Results
 
-The following table shows normalized ROC AUC scores (higher is better):
+Normalized ROC AUC scores (higher is better):
 
-| Dataset | None | GAN | Sample Original |
-|---------|------|-----|-----------------|
+| Dataset | No augmentation | GAN | Sample Original |
+|---------|:-:|:-:|:-:|
 | credit | 0.997 | **0.998** | 0.997 |
 | employee | **0.986** | 0.966 | 0.972 |
 | mortgages | 0.984 | 0.964 | **0.988** |
@@ -369,29 +371,24 @@ The following table shows normalized ROC AUC scores (higher is better):
 
 ## Citation
 
-If you use TabGAN in your research, please cite:
-
 ```bibtex
 @misc{ashrapov2020tabular,
-      title={Tabular GANs for uneven distribution},
-      author={Insaf Ashrapov},
-      year={2020},
-      eprint={2010.00638},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG}
+    title={Tabular GANs for uneven distribution},
+    author={Insaf Ashrapov},
+    year={2020},
+    eprint={2010.00638},
+    archivePrefix={arXiv},
+    primaryClass={cs.LG}
 }
 ```
 
 ## References
 
-[1] Xu, L., & Veeramachaneni, K. (2018). *Synthesizing Tabular Data using Generative Adversarial Networks*. arXiv:1811.11264 [cs.LG].
-
-[2] Jolicoeur-Martineau, A., Fatras, K., & Kachman, T. (2023). *Generating and Imputing Tabular Data via Diffusion and Flow-based Gradient-Boosted Trees*. SamsungSAILMontreal/ForestDiffusion.
-
-[3] Xu, L., Skoularidou, M., Cuesta-Infante, A., & Veeramachaneni, K. (2019). *Modeling Tabular data using Conditional GAN*. NeurIPS.
-
-[4] Borisov, V., Sessler, K., Leemann, T., Pawelczyk, M., & Kasneci, G. (2023). *Language Models are Realistic Tabular Data Generators*. ICLR.
+1. Xu, L., & Veeramachaneni, K. (2018). *Synthesizing Tabular Data using Generative Adversarial Networks*. arXiv:1811.11264.
+2. Jolicoeur-Martineau, A., Fatras, K., & Kachman, T. (2023). *Generating and Imputing Tabular Data via Diffusion and Flow-based Gradient-Boosted Trees*. SamsungSAILMontreal/ForestDiffusion.
+3. Xu, L., Skoularidou, M., Cuesta-Infante, A., & Veeramachaneni, K. (2019). *Modeling Tabular data using Conditional GAN*. NeurIPS.
+4. Borisov, V., Sessler, K., Leemann, T., Pawelczyk, M., & Kasneci, G. (2023). *Language Models are Realistic Tabular Data Generators*. ICLR.
 
 ## License
 
-Apache License 2.0 - See [LICENSE](LICENSE) file for details.
+Apache License 2.0 &mdash; see [LICENSE](LICENSE) for details.

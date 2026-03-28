@@ -1,7 +1,7 @@
 import gc
 import logging
 from abc import ABC, abstractmethod
-from typing import Tuple
+from typing import List, Optional, Tuple
 from .utils import seed_everything
 import pandas as pd
 
@@ -30,6 +30,7 @@ class SampleData(ABC):
         only_adversarial: bool = False,
         use_adversarial: bool = True,
         only_generated_data: bool = False,
+        constraints: Optional[List] = None,
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Defines logic for sampling
@@ -41,6 +42,7 @@ class SampleData(ABC):
         @param use_adversarial: perform or not adversarial filtering
         @param only_generated_data: After generation get only newly generated, without concating input train dataframe.
         Only works for SamplerGAN or ForestDiffusionGenerator.
+        @param constraints: Optional list of Constraint instances to enforce on generated data.
         @return: Newly generated train dataframe and test data
         """
         seed_everything()
@@ -55,7 +57,7 @@ class SampleData(ABC):
                     train_df.copy(), target.copy(), test_df
                 )
         else:
-            logging.info("Preprocessing input data with deep copying input data.")
+            logging.info("Preprocessing input data without deep copying.")
             new_train, new_target, test_df = generator.preprocess_data(
                 train_df, target, test_df
             )
@@ -76,6 +78,19 @@ class SampleData(ABC):
                 new_train, new_target = generator.adversarial_filtering(
                     new_train, new_target, test_df
                 )
+            if constraints:
+                from .constraints import ConstraintEngine
+                logging.info("Applying constraints")
+                engine = ConstraintEngine(constraints, strategy="fix")
+                # Temporarily attach target to keep rows aligned
+                target_col = "__constraint_target__"
+                if new_target is not None:
+                    new_train[target_col] = new_target.values if hasattr(new_target, 'values') else new_target
+                new_train = engine.apply(new_train)
+                if new_target is not None:
+                    new_target = new_train[target_col].reset_index(drop=True)
+                    new_train = new_train.drop(columns=[target_col]).reset_index(drop=True)
+
             gc.collect()
 
             logging.info("Total finishing, returning data")

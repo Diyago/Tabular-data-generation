@@ -228,7 +228,7 @@ class FrequencyEncoder:
         self.cols = cols
         self.counts_dict = None
 
-    def fit(self, X: pd.DataFrame):
+    def fit(self, X: pd.DataFrame, y=None):
         counts_dict = {}
         for col in self.cols:
             values, counts = np.unique(X[col], return_counts=True)
