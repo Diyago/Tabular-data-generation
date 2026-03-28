@@ -4,14 +4,14 @@ import pandas as pd
 from tabgan.utils import make_two_digit, get_year_mnth_dt_from_date
 
 
-class TestUtils(unittest.TestCase):
+class TestMakeTwoDigit(unittest.TestCase):
     def test_make_two_digit(self):
         self.assertEqual(make_two_digit('1'), '01')
         self.assertEqual(make_two_digit('12'), '12')
         self.assertEqual(make_two_digit('123'), '123')
 
 
-class TestUtils(unittest.TestCase):
+class TestGetYearMonthDtFromDate(unittest.TestCase):
     def test_get_year_month_dt_from_date(self):
         # create a sample dataframe
         df = pd.DataFrame({
