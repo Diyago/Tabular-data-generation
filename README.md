@@ -14,6 +14,7 @@
   <a href="https://www.codefactor.io/repository/github/diyago/tabular-data-generation"><img src="https://www.codefactor.io/repository/github/diyago/tabular-data-generation/badge" alt="CodeFactor"></a>
   <a href="https://github.com/diyago/Tabular-data-generation/actions/workflows/codeql.yml"><img src="https://github.com/diyago/Tabular-data-generation/workflows/CodeQL/badge.svg" alt="CodeQL"></a>
   <a href="https://huggingface.co/spaces/InsafQ/TabGAN"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Spaces-TabGAN%20Demo-blue" alt="HF Space"></a>
+  <a href="https://colab.research.google.com/github/Diyago/Tabular-data-generation/blob/master/examples/tabgan_examples.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a>
 </p>
 
 ---

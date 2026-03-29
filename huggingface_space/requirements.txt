@@ -1,5 +1,8 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
 tabgan>=3.0.2
-gradio>=5.0.0
+gradio==5.23.0
 pandas
 numpy>=2.0
 matplotlib
