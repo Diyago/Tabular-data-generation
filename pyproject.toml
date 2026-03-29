@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tabgan"
-version = "3.0.2"
+version = "3.1.0"
 description = "Synthetic tabular data generation with GANs, Diffusion Models, and LLMs"
 readme = "pip_desc.md"
 license = {text = "Apache License 2.0"}

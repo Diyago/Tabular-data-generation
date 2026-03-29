@@ -14,6 +14,8 @@ from .constraints import (
 from .privacy_metrics import PrivacyMetrics
 from .quality_report import QualityReport
 from .sklearn_transformer import TabGANTransformer
+from .auto_synth import AutoSynth
+from .hf_integration import synthesize_hf_dataset
 
 __all__ = [
     "OriginalGenerator",
@@ -32,6 +34,8 @@ __all__ = [
     "PrivacyMetrics",
     "QualityReport",
     "TabGANTransformer",
+    "AutoSynth",
+    "synthesize_hf_dataset",
 ]
 
 try:

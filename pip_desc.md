@@ -40,6 +40,9 @@ All generators share a common pipeline: **generate &rarr; post-process &rarr; ad
 - **Conditional generation** &mdash; generate text conditioned on categorical attributes via LLM prompting
 - **LLM API support** &mdash; integrate with LM Studio, OpenAI, Ollama, or any OpenAI-compatible endpoint
 - **Quality validation** &mdash; compare original and synthetic distributions with a single function call
+- **AutoSynth** &mdash; automatically run all generators, compare quality & privacy, pick the best one
+- **HuggingFace integration** &mdash; synthesize any HF dataset in one call, push results back to Hub
+- **[Live Demo](https://huggingface.co/spaces/InsafQ/TabGAN)** &mdash; try it in browser on HuggingFace Spaces
 
 ## Installation
 

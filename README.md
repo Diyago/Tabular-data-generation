@@ -13,6 +13,7 @@
   <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code style: black"></a>
   <a href="https://www.codefactor.io/repository/github/diyago/tabular-data-generation"><img src="https://www.codefactor.io/repository/github/diyago/tabular-data-generation/badge" alt="CodeFactor"></a>
   <a href="https://github.com/diyago/Tabular-data-generation/actions/workflows/codeql.yml"><img src="https://github.com/diyago/Tabular-data-generation/workflows/CodeQL/badge.svg" alt="CodeQL"></a>
+  <a href="https://huggingface.co/spaces/InsafQ/TabGAN"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Spaces-TabGAN%20Demo-blue" alt="HF Space"></a>
 </p>
 
 ---
@@ -40,6 +41,9 @@ All generators share a common pipeline: **generate &rarr; post-process &rarr; ad
 - **Conditional generation** &mdash; generate text conditioned on categorical attributes via LLM prompting
 - **LLM API support** &mdash; integrate with LM Studio, OpenAI, Ollama, or any OpenAI-compatible endpoint
 - **Quality validation** &mdash; compare original and synthetic distributions with a single function call
+- **AutoSynth** &mdash; automatically run all generators, compare quality & privacy, pick the best one
+- **HuggingFace integration** &mdash; synthesize any HF dataset in one call, push results back to Hub
+- **[Live Demo](https://huggingface.co/spaces/InsafQ/TabGAN)** &mdash; try it in browser on HuggingFace Spaces
 
 ## Installation
 
@@ -437,6 +441,57 @@ transformer = TabGANTransformer(
 
 X_augmented = transformer.fit_transform(X_train, y_train)
 y_augmented = transformer.get_augmented_target()
+```
+
+## AutoSynth
+
+Don't know which generator works best for your data? **AutoSynth** runs all of them and picks the winner based on quality and privacy scores:
+
+```python
+from tabgan import AutoSynth
+
+result = AutoSynth(df, target_col="label").run()
+
+print(result.report)
+#   Generator          Status  Score  Quality  Privacy  Rows  Time (s)
+# 0 GAN (CTGAN)        OK      0.847  0.891    0.743    165   12.3
+# 1 Forest Diffusion   OK      0.812  0.834    0.761    165   45.1
+# 2 Random Baseline    OK      0.654  0.621    0.732    165   0.1
+
+best_synthetic = result.best_data
+print(f"Winner: {result.best_name}")
+```
+
+Customize scoring weights:
+
+```python
+result = AutoSynth(
+    df,
+    target_col="label",
+    quality_weight=0.5,   # equal weight
+    privacy_weight=0.5,
+).run()
+```
+
+## HuggingFace Hub Integration
+
+Synthesize any tabular dataset from HuggingFace Hub in one call:
+
+```python
+from tabgan import synthesize_hf_dataset
+
+# Load → Generate → Evaluate automatically
+result = synthesize_hf_dataset("scikit-learn/iris", target_col="target")
+print(result.synthetic_df.head())
+print(f"Quality: {result.quality_summary['overall_score']}")
+
+# Push synthetic dataset back to Hub
+result = synthesize_hf_dataset(
+    "scikit-learn/iris",
+    target_col="target",
+    push_to_hub=True,
+    hub_repo_id="your-username/iris-synthetic",
+)
 ```
 
 ## Command-Line Interface
