@@ -7,9 +7,17 @@ from typing import Tuple
 
 import pandas as pd
 import torch
-from be_great import GReaT
 
-from _ForestDiffusion import ForestDiffusionModel
+try:
+    from be_great import GReaT
+except ImportError:
+    GReaT = None
+
+try:
+    from _ForestDiffusion import ForestDiffusionModel
+except ImportError:
+    ForestDiffusionModel = None
+
 from _ctgan.synthesizer import _CTGANSynthesizer as CTGAN
 from tabgan.abc_sampler import Sampler, SampleData
 from tabgan.adversarial_model import AdversarialModel
@@ -350,6 +358,11 @@ class SamplerDiffusion(SamplerOriginal):
         if target is not None:
             train_df[self.TEMP_TARGET] = target
         logging.info("Fitting ForestDiffusion model")
+        if ForestDiffusionModel is None:
+            raise ImportError(
+                "ForestDiffusion is not installed. "
+                "Please install it: pip install ForestDiffusion"
+            )
         if self.cat_cols is None:
             forest_model = ForestDiffusionModel(train_df.to_numpy(), label_y=None, n_t=50,
                                                 duplicate_K=100,

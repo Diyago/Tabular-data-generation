@@ -168,7 +168,7 @@ pipe.fit(X_train, y_train)
 
 ## Try It Now
 
-**Interactive Demo:** [huggingface.co/spaces/InsafQ/TabGAN](https://huggingface.co/spaces/InsafQ/TabGAN)
+**Interactive Demo:** [insafq-tabgan.hf.space](https://insafq-tabgan.hf.space)
 
 **Install:**
 ```bash

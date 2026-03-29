@@ -13,7 +13,7 @@
   <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code style: black"></a>
   <a href="https://www.codefactor.io/repository/github/diyago/tabular-data-generation"><img src="https://www.codefactor.io/repository/github/diyago/tabular-data-generation/badge" alt="CodeFactor"></a>
   <a href="https://github.com/diyago/Tabular-data-generation/actions/workflows/codeql.yml"><img src="https://github.com/diyago/Tabular-data-generation/workflows/CodeQL/badge.svg" alt="CodeQL"></a>
-  <a href="https://huggingface.co/spaces/InsafQ/TabGAN"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Spaces-TabGAN%20Demo-blue" alt="HF Space"></a>
+  <a href="https://insafq-tabgan.hf.space"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Spaces-TabGAN%20Demo-blue" alt="HF Space"></a>
   <a href="https://colab.research.google.com/github/Diyago/Tabular-data-generation/blob/master/examples/tabgan_examples.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a>
 </p>
 
@@ -44,7 +44,7 @@ All generators share a common pipeline: **generate &rarr; post-process &rarr; ad
 - **Quality validation** &mdash; compare original and synthetic distributions with a single function call
 - **AutoSynth** &mdash; automatically run all generators, compare quality & privacy, pick the best one
 - **HuggingFace integration** &mdash; synthesize any HF dataset in one call, push results back to Hub
-- **[Live Demo](https://huggingface.co/spaces/InsafQ/TabGAN)** &mdash; try it in browser on HuggingFace Spaces
+- **[Live Demo](https://insafq-tabgan.hf.space)** &mdash; try it in browser on HuggingFace Spaces
 
 ## Installation
 

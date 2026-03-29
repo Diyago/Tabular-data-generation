@@ -1,9 +1,15 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch
-torchvision
-tabgan>=3.0.2
 gradio==5.23.0
 pandas
 numpy>=2.0
+scipy
 matplotlib
 scikit-learn>=1.5.2
+category_encoders
+lightgbm>=2.2.3
+xgboost
+joblib
+python-dateutil
+tqdm
+requests
