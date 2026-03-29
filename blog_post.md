@@ -181,7 +181,7 @@ pip install tabgan
 
 ## Benchmarks
 
-Normalized ROC AUC comparison across 6 datasets:
+### Quality (Normalized ROC AUC)
 
 | Dataset | CTGAN | Forest Diffusion | Random |
 |---------|-------|-------------------|--------|
@@ -189,7 +189,28 @@ Normalized ROC AUC comparison across 6 datasets:
 | Adult Census | 0.689 | 0.712 | 0.523 |
 | Telecom | 0.814 | 0.799 | 0.548 |
 
-*Higher is better. Full benchmarks in the [README](https://github.com/Diyago/Tabular-data-generation).*
+*Higher is better.*
+
+### Speed (generation time, 1000 rows, 8 features)
+
+| Generator | Time | Notes |
+|-----------|------|-------|
+| **Random Baseline** | ~0.1s | Instant — just resampling |
+| **CTGAN (GAN)** | ~1–10s | Fast, depends on epochs |
+| **Forest Diffusion** | ~30–120s | High quality, but slower |
+| **LLM (GReaT)** | ~5–30min | Best for text columns, GPU recommended |
+
+Every `generate_data_pipe()` call now records per-step timing in `generator.last_timing_`:
+
+```python
+gen = GANGenerator(gen_x_times=1.1)
+synthetic, _ = gen.generate_data_pipe(train, target, test)
+print(gen.last_timing_)
+# {'preprocess': 0.001, 'generation': 2.3, 'postprocess': 0.01,
+#  'adversarial_filtering': 0.15, 'total': 2.46}
+```
+
+*Full benchmarks in the [README](https://github.com/Diyago/Tabular-data-generation).*
 
 ## What's Next
 
