@@ -54,14 +54,19 @@ Switch between state-of-the-art methods with a single parameter change:
 |-----------|----------|-------|
 | **CTGAN** (GAN) | General purpose, mixed types | Fast |
 | **Forest Diffusion** | Tree-friendly structured data | Medium |
+| **Bayesian** (Copula) | Correlation-preserving, lightweight | Fast |
 | **LLM** (GReaT) | Text-rich, semantic dependencies | Slow |
 | **Random Baseline** | Quick benchmarking | Instant |
 
 ```python
-from tabgan import GANGenerator, ForestDiffusionGenerator, LLMGenerator
+from tabgan import GANGenerator, ForestDiffusionGenerator, BayesianGenerator
 
 # Just swap the class — same API!
 gen = ForestDiffusionGenerator(gen_x_times=1.0, cat_cols=["category"])
+synthetic, _ = gen.generate_data_pipe(df, target, df, only_generated_data=True)
+
+# Bayesian generator — fast, preserves correlations via Gaussian Copula
+gen = BayesianGenerator(gen_x_times=1.0, cat_cols=["category"])
 synthetic, _ = gen.generate_data_pipe(df, target, df, only_generated_data=True)
 ```
 

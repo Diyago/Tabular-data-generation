@@ -72,6 +72,7 @@ new_train, new_target = GANGenerator().generate_data_pipe(train, target, test)
 |-----------|-------------|----------|
 | `GANGenerator` | CTGAN-based generation | General tabular data with mixed types |
 | `ForestDiffusionGenerator` | Diffusion models with tree-based methods | Complex tabular structures |
+| `BayesianGenerator` | Gaussian Copula with marginal preservation | Fast, correlation-preserving generation |
 | `LLMGenerator` | Large Language Model based | Semantic dependencies, text columns |
 | `OriginalGenerator` | Baseline random sampler | Benchmarking and comparison |
 
@@ -133,7 +134,10 @@ TabGAN accepts `pandas.DataFrame` inputs with:
 ### Basic Usage with All Generators
 
 ```python
-from tabgan.sampler import OriginalGenerator, GANGenerator, ForestDiffusionGenerator, LLMGenerator
+from tabgan.sampler import (
+    OriginalGenerator, GANGenerator, ForestDiffusionGenerator,
+    BayesianGenerator, LLMGenerator,
+)
 import pandas as pd
 import numpy as np
 
@@ -146,7 +150,8 @@ new_train2, new_target2 = GANGenerator(
     gen_params={"batch_size": 500, "epochs": 10, "patience": 5}
 ).generate_data_pipe(train, target, test)
 new_train3, new_target3 = ForestDiffusionGenerator().generate_data_pipe(train, target, test)
-new_train4, new_target4 = LLMGenerator(
+new_train4, new_target4 = BayesianGenerator().generate_data_pipe(train, target, test)
+new_train5, new_target5 = LLMGenerator(
     gen_params={"batch_size": 32, "epochs": 4, "llm": "distilgpt2", "max_length": 500}
 ).generate_data_pipe(train, target, test)
 ```

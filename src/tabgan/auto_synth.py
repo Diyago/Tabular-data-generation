@@ -26,6 +26,7 @@ from .sampler import (
     GANGenerator,
     ForestDiffusionGenerator,
     OriginalGenerator,
+    BayesianGenerator,
 )
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,10 @@ _DEFAULT_GENERATORS = {
     },
     "Forest Diffusion": {
         "cls": ForestDiffusionGenerator,
+        "params": {},
+    },
+    "Bayesian (Copula)": {
+        "cls": BayesianGenerator,
         "params": {},
     },
     "Random Baseline": {

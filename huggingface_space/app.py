@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 from sklearn.datasets import fetch_california_housing, load_iris, load_wine
 
-from tabgan.sampler import GANGenerator, ForestDiffusionGenerator, OriginalGenerator
+from tabgan.sampler import GANGenerator, ForestDiffusionGenerator, OriginalGenerator, BayesianGenerator
 from tabgan.quality_report import QualityReport
 from tabgan.privacy_metrics import PrivacyMetrics
 
@@ -50,6 +50,7 @@ def _load_demo(name: str) -> pd.DataFrame:
 GENERATORS = {
     "GAN (CTGAN)": "gan",
     "Forest Diffusion": "diffusion",
+    "Bayesian (Copula)": "bayesian",
     "Random Sampling (Baseline)": "original",
 }
 
@@ -124,6 +125,8 @@ def generate_synthetic(
         gen_cls = GANGenerator
     elif gen_type == "diffusion":
         gen_cls = ForestDiffusionGenerator
+    elif gen_type == "bayesian":
+        gen_cls = BayesianGenerator
     else:
         gen_cls = OriginalGenerator
 

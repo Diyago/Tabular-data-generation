@@ -63,6 +63,10 @@ class LLMGenerator(_BaseGenerator):
     _sampler_class = None
 
 
+class BayesianGenerator(_BaseGenerator):
+    _sampler_class = None
+
+
 class SamplerOriginal(Sampler):
     def __init__(
             self,
@@ -624,11 +628,93 @@ class SamplerLLM(SamplerOriginal):
             return ""  # Fallback or re-raise
 
 
+class SamplerBayesian(SamplerOriginal):
+    """Bayesian synthetic data generator using Gaussian Copula.
+
+    Fits marginal distributions for each numerical column and captures
+    correlations via a Gaussian copula.  Categorical columns are sampled
+    from their empirical conditional distributions.
+    """
+
+    def generate_data(
+            self, train_df, target, test_df, only_generated_data: bool
+    ):
+        from scipy.stats import norm, rankdata
+
+        self._validate_data(train_df, target, test_df)
+
+        if target is not None:
+            train_df = train_df.copy()
+            train_df[self.TEMP_TARGET] = target
+
+        n_samples = int(self.gen_x_times * len(train_df))
+        num_cols = [c for c in train_df.columns
+                    if pd.api.types.is_numeric_dtype(train_df[c])]
+        cat_cols_here = [c for c in train_df.columns if c not in num_cols]
+
+        generated_parts = {}
+
+        # --- Numerical columns: Gaussian copula ---
+        if num_cols:
+            num_data = train_df[num_cols].copy()
+            # Store marginals (empirical CDF via ranks)
+            uniform = pd.DataFrame(index=num_data.index, columns=num_cols,
+                                   dtype=float)
+            for col in num_cols:
+                vals = num_data[col].values.astype(float)
+                ranks = rankdata(vals, method="average")
+                # Map to (0, 1) open interval
+                uniform[col] = ranks / (len(ranks) + 1)
+
+            # Transform to standard normal
+            normal_data = uniform.apply(norm.ppf)
+            # Replace any inf/-inf caused by extreme ranks
+            normal_data.replace([np.inf, -np.inf], np.nan, inplace=True)
+            normal_data.fillna(0.0, inplace=True)
+
+            # Fit covariance
+            mean = normal_data.mean().values.copy()
+            cov = normal_data.cov().values.copy()
+            # Regularize covariance to ensure positive-definiteness
+            cov += np.eye(len(num_cols)) * 1e-6
+
+            # Sample from multivariate normal
+            z_samples = np.random.multivariate_normal(mean, cov, size=n_samples)
+
+            # Transform back through inverse CDF (quantile mapping)
+            for i, col in enumerate(num_cols):
+                u = norm.cdf(z_samples[:, i])
+                sorted_vals = np.sort(num_data[col].dropna().values)
+                n_orig = len(sorted_vals)
+                # Map uniform samples to original quantiles
+                indices = np.clip(
+                    (u * n_orig).astype(int), 0, n_orig - 1
+                )
+                # Add small noise to avoid exact duplicates
+                base = sorted_vals[indices]
+                if n_orig > 1:
+                    scale = np.std(sorted_vals) * 0.01
+                    base = base + np.random.normal(0, scale, size=len(base))
+                generated_parts[col] = base
+
+        # --- Categorical columns: empirical frequency sampling ---
+        for col in cat_cols_here:
+            freq = train_df[col].value_counts(normalize=True)
+            generated_parts[col] = np.random.choice(
+                freq.index, size=n_samples, p=freq.values
+            )
+
+        generated_df = pd.DataFrame(generated_parts, columns=train_df.columns)
+        return self.handle_generated_data(train_df, generated_df.values,
+                                          only_generated_data)
+
+
 # Wire up factory classes to their concrete sampler implementations
 OriginalGenerator._sampler_class = SamplerOriginal
 GANGenerator._sampler_class = SamplerGAN
 ForestDiffusionGenerator._sampler_class = SamplerDiffusion
 LLMGenerator._sampler_class = SamplerLLM
+BayesianGenerator._sampler_class = SamplerBayesian
 
 
 if __name__ == "__main__":

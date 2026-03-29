@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from importlib.metadata import version, PackageNotFoundError
-from .sampler import OriginalGenerator, Sampler, GANGenerator, ForestDiffusionGenerator, LLMGenerator
+from .sampler import OriginalGenerator, Sampler, GANGenerator, ForestDiffusionGenerator, LLMGenerator, BayesianGenerator
 from .llm_config import LLMAPIConfig
 from .llm_api_client import LLMAPIClient
 from .constraints import (
@@ -23,6 +23,7 @@ __all__ = [
     "GANGenerator",
     "ForestDiffusionGenerator",
     "LLMGenerator",
+    "BayesianGenerator",
     "LLMAPIConfig",
     "LLMAPIClient",
     "Constraint",

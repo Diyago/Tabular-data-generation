@@ -30,6 +30,7 @@ from .sampler import (
     GANGenerator,
     ForestDiffusionGenerator,
     OriginalGenerator,
+    BayesianGenerator,
     _BaseGenerator,
 )
 
