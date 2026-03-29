@@ -1,7 +1,8 @@
 import gc
 import logging
+import time
 from abc import ABC, abstractmethod
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from .utils import seed_everything
 import pandas as pd
 
@@ -46,7 +47,10 @@ class SampleData(ABC):
         @return: Newly generated train dataframe and test data
         """
         seed_everything()
+        _t_total_start = time.perf_counter()
+        _timings: Dict[str, float] = {}
         generator = self.get_object_generator()
+        _t_step = time.perf_counter()
         if deep_copy:
             logging.info("Preprocessing input data with deep copying input data.")
             if target is None or test_df is None:
@@ -61,23 +65,40 @@ class SampleData(ABC):
             new_train, new_target, test_df = generator.preprocess_data(
                 train_df, target, test_df
             )
+        _timings["preprocess"] = time.perf_counter() - _t_step
+
         if only_adversarial and use_adversarial:
             logging.info("Applying adversarial filtering")
-            return generator.adversarial_filtering(new_train, new_target, test_df)
+            _t_step = time.perf_counter()
+            result = generator.adversarial_filtering(new_train, new_target, test_df)
+            _timings["adversarial_filtering"] = time.perf_counter() - _t_step
+            _timings["total"] = time.perf_counter() - _t_total_start
+            self.last_timing_ = _timings
+            logging.info("Timing: %s", self._format_timing(_timings))
+            return result
         else:
             logging.info("Starting generation step.")
+            _t_step = time.perf_counter()
             new_train, new_target = generator.generate_data(
                 new_train, new_target, test_df, only_generated_data
             )
+            _timings["generation"] = time.perf_counter() - _t_step
+
             logging.info("Starting postprocessing step.")
+            _t_step = time.perf_counter()
             new_train, new_target = generator.postprocess_data(
                 new_train, new_target, test_df
             )
+            _timings["postprocess"] = time.perf_counter() - _t_step
+
             if use_adversarial:
                 logging.info("Applying adversarial filtering")
+                _t_step = time.perf_counter()
                 new_train, new_target = generator.adversarial_filtering(
                     new_train, new_target, test_df
                 )
+                _timings["adversarial_filtering"] = time.perf_counter() - _t_step
+
             if constraints:
                 from .constraints import ConstraintEngine
                 logging.info("Applying constraints")
@@ -93,8 +114,20 @@ class SampleData(ABC):
 
             gc.collect()
 
-            logging.info("Total finishing, returning data")
+            _timings["total"] = time.perf_counter() - _t_total_start
+            self.last_timing_ = _timings
+            logging.info("Timing: %s", self._format_timing(_timings))
             return new_train, new_target
+
+    @staticmethod
+    def _format_timing(timings: Dict[str, float]) -> str:
+        parts = []
+        for step, secs in timings.items():
+            if secs < 1:
+                parts.append(f"{step}={secs * 1000:.0f}ms")
+            else:
+                parts.append(f"{step}={secs:.1f}s")
+        return " | ".join(parts)
 
 
 class Sampler(ABC):

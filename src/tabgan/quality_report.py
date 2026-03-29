@@ -61,6 +61,7 @@ _HTML_TEMPLATE = """\
     <div>Mean PSI</div>
     <div class="score">{mean_psi:.3f}</div>
   </div>
+  {timing_card}
 </div>
 
 <h2>Column Statistics</h2>
@@ -121,12 +122,14 @@ class QualityReport:
         synthetic_df: pd.DataFrame,
         cat_cols: Optional[List[str]] = None,
         target_col: Optional[str] = None,
+        generation_timing: Optional[Dict[str, float]] = None,
     ):
         shared = [c for c in original_df.columns if c in synthetic_df.columns]
         self.original = original_df[shared].copy()
         self.synthetic = synthetic_df[shared].copy()
         self.cat_cols = [c for c in (cat_cols or []) if c in shared]
         self.target_col = target_col
+        self.generation_timing = generation_timing
         self._results: Dict = {}
 
     # ------------------------------------------------------------------
@@ -145,12 +148,15 @@ class QualityReport:
         """Return a dict of all metric results (without images)."""
         if not self._results:
             self.compute()
-        return {
+        result = {
             "column_stats": self._results["column_stats"],
             "psi": {k: v for k, v in self._results["psi"].items()},
             "ml_utility": self._results["ml_utility"],
             "overall_score": self._results["overall"],
         }
+        if self.generation_timing:
+            result["generation_timing"] = self.generation_timing
+        return result
 
     def to_html(self, path: str) -> None:
         """Write a self-contained HTML report to *path*."""
@@ -216,6 +222,23 @@ class QualityReport:
         numeric_psi = [v for k, v in psi.items() if k != "mean" and isinstance(v, (int, float))]
         mean_psi = float(np.mean(numeric_psi)) if numeric_psi else 0.0
 
+        # Timing card
+        timing_card = ""
+        if self.generation_timing and "total" in self.generation_timing:
+            total_s = self.generation_timing["total"]
+            if total_s < 1:
+                t_str = f"{total_s * 1000:.0f}ms"
+            elif total_s < 60:
+                t_str = f"{total_s:.1f}s"
+            else:
+                t_str = f"{total_s / 60:.1f}min"
+            timing_card = (
+                f'<div class="metric-card">'
+                f"<div>Generation Time</div>"
+                f'<div class="score">{t_str}</div>'
+                f"</div>"
+            )
+
         html = _HTML_TEMPLATE.format(
             n_orig=len(self.original),
             n_synth=len(self.synthetic),
@@ -228,6 +251,7 @@ class QualityReport:
             corr_images=corr_html,
             dist_images=dist_html,
             ml_detail_html=ml_html,
+            timing_card=timing_card,
         )
 
         with open(path, "w", encoding="utf-8") as fh:
